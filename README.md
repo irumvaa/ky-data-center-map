@@ -5,53 +5,41 @@ and major electric transmission lines. Built in the same branded style as the Mo
 Association's eky-ev-map: county border shading, a search bar with autocomplete, a stats bar,
 and pill-style filters.
 
-## Data sources (live, refreshed on page load)
-- Regulations: pulled from the Mountain Association's internal tracking sheet (not linked here)
-- Proposed projects: pulled from the Mountain Association's internal tracking sheet (not linked here)
-- Transmission lines: HIFLD Open (NASA NCCS ArcGIS mirror), queried live by KY bounding box
-- County boundaries + centroids: static files (`county_centroids.json` here; county polygons are
-  embedded directly in `index.html`), built from US Census county shapes
+## This map is fully static — no spreadsheet connection at all
+Earlier versions of this map fetched the tracking sheets live so it would auto-update. That's
+been removed. Every regulation and project record is baked directly into `index.html` as plain
+JavaScript objects (`regulations` and `projects`). There is no reference to any spreadsheet URL,
+sheet ID, or API key anywhere in this file, in view-source, or in the page's network traffic.
+Transmission lines still load from a public third-party grid dataset (HIFLD, via a NASA-hosted
+mirror) since that's public infrastructure data, not anything from the Mountain Association's
+internal tracking.
 
-The two tracking-sheet URLs live only inside `index.html`'s `REGULATION_CSV` and `PROJECTS_CSV`
-constants, not documented here, since this README may end up more widely shared than the sheets
-themselves.
+**Trade-off:** this map will not reflect new spreadsheet edits automatically anymore. To update
+it, regenerate the embedded `regulations` and `projects` data and rebuild `index.html` (or ask
+Claude to do that from the current tracking sheets, the same way this version was built).
 
-## Static enrichment (not live)
+## Static enrichment
 The Kentucky Lantern's July 7, 2026 roundup (updated July 24) of proposed/operating hyperscale
-projects is baked into `index.html` as `LANTERN_STAGE` and `LANTERN_DESC`. It adds a development
-stage (Speculated/Planned/Operating) and a short paraphrased description to matching counties, and
-adds county-level markers for projects the article reported that aren't yet in the tracking
-spreadsheet (Greenup, Hancock, Marshall, McCracken, Pike, Wolfe, and the Kentucky Industrial
-Alliance project in Barren County). Since this came from a snapshot article rather than a live
-source, it won't update itself — if the Lantern's map changes significantly, these sections need a
-manual refresh.
-
-## Fallback-then-live-refresh pattern
-The map renders instantly from data embedded directly in `index.html` (`regulations` and
-`projects` arrays), so it's never blank while waiting on a network request. It then quietly
-fetches the live tracking sheets in the background; if that succeeds, the map updates in place. If
-it fails for any reason, the embedded fallback data keeps the map fully functional.
+projects is folded into the `notes` and `stage` fields for matching projects, and several
+counties from that article that weren't yet in the tracking sheet (Greenup, Hancock, Marshall,
+McCracken, Pike, Wolfe, and the Kentucky Industrial Alliance project in Barren County) are
+included as their own entries. This is a one-time snapshot, not live — it will drift out of date
+as the underlying situation changes.
 
 ## Project marker logic
-- If a spreadsheet row has a known city, the project is pinned there (solid pin).
+- If a project has a known city, it's pinned there (solid pin).
 - If only a county is known, the marker is placed at that county's real geographic centroid
   (computed from the county polygon, not a stand-in city) and shown with a dashed outline, labeled
   "county-wide — exact site not yet public."
 
-## Known limitations / things to watch
-- **City geocoding is a hardcoded lookup**, not a real geocoder (`CITY_COORDS` in `index.html`).
-  If a new city shows up in either sheet that isn't in that list, its marker falls back to the
-  county centroid until you add coordinates for it.
-- The "various" rollup row (linking to a Courier-Journal roundup article) is skipped from point
-  mapping since it has no single location.
-- Transmission line data comes from a third-party public ArcGIS service (not something we control),
-  so if that service is down or renamed, that layer will silently fail to load (map still works,
-  just without that layer).
-- The regulation sheet has a stray reference URL in row 1 above the real header row; the loader
-  strips it automatically, but if the sheet's structure changes significantly, re-check this.
-- The Lantern enrichment (see above) is a one-time snapshot, not live. It will drift out of date.
-- The Mountain Association logo isn't embedded here (see note below) — the banner uses a plain
-  emoji badge instead.
+## Known limitations
+- Since this is now a static snapshot, it needs to be manually regenerated to include new
+  spreadsheet entries or Lantern updates.
+- Transmission line data comes from a third-party public ArcGIS service (not something we
+  control), so if that service is down or renamed, that layer will silently fail to load (map
+  still works, just without that layer).
+- The Mountain Association logo isn't embedded here — the banner uses a plain emoji badge
+  instead (see branding note below).
 
 ## Branding note
 This map reuses eky-ev-map's CSS/layout patterns but does not embed the actual Mountain
