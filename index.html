@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kentucky Data Center Map — Proposals &amp; Local Regulations</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  #map { height: 100vh; width: 100%; }
+  .header {
+    position: absolute; top: 10px; left: 50px; z-index: 1000;
+    background: white; padding: 10px 16px; border-radius: 6px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.3); max-width: 320px;
+  }
+  .header h1 { font-size: 15px; margin: 0 0 4px 0; }
+  .header p { font-size: 12px; margin: 0; color: #555; }
+  .legend {
+    background: white; padding: 10px 14px; border-radius: 6px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.3); font-size: 12px; line-height: 1.6;
+  }
+  .legend h4 { margin: 0 0 6px 0; font-size: 13px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: middle; border: 1px solid #999; }
+  .legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; border: 1px solid #333; }
+  .popup-table { font-size: 12px; }
+  .popup-table b { display: inline-block; min-width: 90px; }
+  .popup-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .status-msg {
+    position: absolute; bottom: 20px; left: 50px; z-index: 1000;
+    background: rgba(255,255,255,0.95); padding: 6px 12px; border-radius: 6px;
+    font-size: 11px; color: #555; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .leaflet-control-layers { font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Kentucky Data Centers: Proposals &amp; Local Regulations</h1>
+  <p>Counties/cities with data center moratoria, bans, or ordinances, proposed data center projects, and major electric transmission lines. Data refreshes from source spreadsheets on page load.</p>
+</div>
+
+<div id="map"></div>
+<div class="status-msg" id="statusMsg">Loading data…</div>
+
+<script>
+// ---------- CONFIG ----------
+const REGULATION_CSV = "https://docs.google.com/spreadsheets/d/1GFwP3z1mrcX-drzTPJm6TnAbb7NWQ-nVpfIZ21jGlGs/export?format=csv&gid=0";
+const PROJECTS_CSV = "https://docs.google.com/spreadsheets/d/12N9YO7LCQTfqThe5cWLLlG-5kKpePWFBX3Jw3xRbrJI/export?format=csv&gid=783211755";
+const COUNTIES_GEOJSON = "ky_counties.json";
+const COUNTY_CENTROIDS_JSON = "county_centroids.json";
+const TRANSMISSION_URL = "https://maps.nccs.nasa.gov/mapping/rest/services/hifld_open/energy/FeatureServer/21/query?geometry=-89.6,36.4,-81.9,39.4&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=voltage,volt_class,owner,type,status&outSR=4326&f=geojson";
+
+// City / place coordinates for geocoding sheet rows that give a specific place.
+const CITY_COORDS = {
+  "lexington": [38.0406, -84.5037],
+  "whitesburg": [37.1187, -82.8298],
+  "pineville": [36.7615, -83.7010],
+  "bardstown": [37.8072, -85.4669],
+  "cave city": [37.1387, -85.9591],
+  "ludlow": [39.0895, -84.5480],
+  "ashland": [38.4767, -82.6382],
+  "london": [37.1289, -84.0833],
+  "louisville": [38.2527, -85.7585],
+  "la grange": [38.4062, -85.3783],
+  "west point": [37.9364, -85.9436],
+  "maysville": [38.6412, -83.7452],
+  "franklin": [36.7220, -86.5772],
+  "ekron": [37.9095, -86.0139],
+  "harrodsburg": [37.7595, -84.8508],
+  "carrollton": [38.6773, -85.1519],
+  "pikeville": [37.4778, -82.5188]
+};
+// Known city -> county, used to fill in a blank county field in the sheet
+// (e.g. the "Cave City" row has no county listed) so regulation/stage
+// lookups by county still match.
+const CITY_TO_COUNTY = {
+  "cave city": "barren",
+  "louisville": "jefferson",
+  "lexington": "fayette",
+  "ashland": "boyd",
+  "la grange": "oldham",
+  "maysville": "mason",
+  "franklin": "simpson",
+  "ekron": "meade",
+  "harrodsburg": "mercer",
+  "pineville": "bell",
+  "pikeville": "pike"
+};
+// Loaded at runtime from county_centroids.json: true polygon centroid for
+// every KY county, keyed by lowercase county name. Used to place a project
+// marker when only a county (not a specific city) is known — this is a
+// real geographic centroid of the county, not a stand-in city, so those
+// markers are labeled "county-wide" rather than tied to any particular town.
+let COUNTY_CENTROIDS = {};
+
+// Supplementary context from the Kentucky Lantern's July 7, 2026 roundup
+// (updated July 24, 2026) of proposed/operating hyperscale data centers,
+// paraphrased. Keyed by lowercase county name. Used to add a development
+// stage and a short description to matching project markers, and to add
+// county-level markers for projects the Lantern reported that aren't yet
+// in the tracking spreadsheet.
+const LANTERN_STAGE = {
+  "barren": "Planned", "bell": "Planned", "boyd": "Planned", "carroll": "Planned",
+  "fayette": "Planned", "greenup": "Planned", "hancock": "Planned",
+  "jefferson": "Planned", "marshall": "Operating", "mason": "Planned",
+  "mercer": "Speculated", "mccracken": "Operating", "oldham": "Planned",
+  "pike": "Planned", "simpson": "Planned", "wolfe": "Operating"
+};
+const LANTERN_DESC = {
+  "barren": "Kentucky Lantern (7/2026): Kentucky Industrial Alliance is assembling land for a hyperscale project and is in litigation with Cave City over its moratorium; reported plans cite roughly 2 million sq ft and up to 1.2 GW.",
+  "bell": "Kentucky Lantern (7/2026): Murray Industries has said it wants to invest billions in a data center on land it owns; a June fiscal court meeting drew large public turnout over water and noise concerns.",
+  "boyd": "Kentucky Lantern (7/2026): Terawulf's announced project sits at an industrial park spanning Boyd and Greenup counties, with capacity reported up to 1 GW.",
+  "carroll": "Kentucky Lantern (7/2026): fiscal court moved to start state tax-break paperwork for a Deca Companies project; separately, Poe Companies/PowerHouse Data Centers announced a roughly $9.6B project near the Kentucky River.",
+  "fayette": "Kentucky Lantern (7/2026): DartPoints bought an existing Lexington data center site and wants to expand it; the city's temporary moratorium is currently blocking that expansion.",
+  "greenup": "Kentucky Lantern (7/2026): two separate proposals reported here: the Terawulf project spanning into Boyd County, and a Rubix Data Centers (Submer Group) project at the former AK Steel mill site, described as able to draw over 10% of Kentucky's summer electricity output.",
+  "hancock": "Kentucky Lantern (7/2026): Terawulf has proposed a roughly 482 MW data center at the site of an idled Century Aluminum plant.",
+  "jefferson": "Kentucky Lantern (7/2026): Louisville Metro Council approved a 1.6 million sq ft Poe Companies/PowerHouse project in West Louisville in March 2026 despite opposition; the city is now weighing a draft data center ordinance.",
+  "marshall": "Kentucky Lantern (7/2026): two Bitcoin-mining data centers operating near Calvert City — CoreScientific (150 MW, since 2019) and Riot Platforms (25 MW, acquired 2024).",
+  "mason": "Kentucky Lantern (7/2026): an undisclosed company described locally as \"Fortune 100\"-scale is evaluating a Mason County campus reported at up to 1.2 GW.",
+  "mercer": "Kentucky Lantern (7/2026): a land developer is marketing property near the E.W. Brown power plant for a data center; county officials are weighing a regulating ordinance.",
+  "mccracken": "Kentucky Lantern (7/2026): Riot Platforms operates a 60 MW Bitcoin-mining data center after buying the site from a prior operator.",
+  "oldham": "Kentucky Lantern (7/2026): Western Hospitality Partners downsized and relocated its earlier hyperscale plans to a new site in the county.",
+  "pike": "Kentucky Lantern (7/2026): Pikeville has a preliminary agreement with developer MD Squared to explore a roughly $250M, 25-30 MW project in an industrial park.",
+  "simpson": "Kentucky Lantern (7/2026): TenKey LandCo wants to build a large data center and is suing the county over its conditional-use-permit ordinance.",
+  "wolfe": "Kentucky Lantern (7/2026): a Bitcoin-mining data center has operated in an unincorporated part of the county since 2023; reports in July 2026 said it was shutting down."
+};
+// County-level projects the Lantern reported that don't have a matching
+// row in the tracking spreadsheet yet (no city known for these).
+const LANTERN_ONLY_PROJECTS = [
+  { "short name": "Kentucky Industrial Alliance", city: "", county: "Barren", size: "~2M sq ft, up to 1.2 GW", developer: "Kentucky Industrial Alliance", "P&Z status": "in litigation with Cave City over moratorium", "utility status": "", "link(s)": "", notes: LANTERN_DESC["barren"] },
+  { "short name": "Terawulf Boyd/Greenup", city: "", county: "Greenup", size: "up to 1 GW", developer: "Terawulf", "P&Z status": "", "utility status": "", "link(s)": "", notes: LANTERN_DESC["greenup"] },
+  { "short name": "Rubix (AK Steel site)", city: "", county: "Greenup", size: "", developer: "Rubix Data Centers (Submer Group)", "P&Z status": "", "utility status": "", "link(s)": "", notes: LANTERN_DESC["greenup"] },
+  { "short name": "Terawulf Century Aluminum site", city: "", county: "Hancock", size: "482 MW", developer: "Terawulf", "P&Z status": "", "utility status": "", "link(s)": "", notes: LANTERN_DESC["hancock"] },
+  { "short name": "CoreScientific Calvert City", city: "Calvert City", county: "Marshall", size: "150 MW", developer: "CoreScientific", "P&Z status": "operating since 2019", "utility status": "", "link(s)": "", notes: LANTERN_DESC["marshall"] },
+  { "short name": "Riot Platforms Calvert City", city: "Calvert City", county: "Marshall", size: "25 MW", developer: "Riot Platforms", "P&Z status": "operating, acquired 2024", "utility status": "", "link(s)": "", notes: LANTERN_DESC["marshall"] },
+  { "short name": "Riot Platforms McCracken Co.", city: "", county: "McCracken", size: "60 MW", developer: "Riot Platforms", "P&Z status": "operating", "utility status": "", "link(s)": "", notes: LANTERN_DESC["mccracken"] },
+  { "short name": "MD Squared Pikeville", city: "Pikeville", county: "Pike", size: "25-30 MW", developer: "MD Squared", "P&Z status": "preliminary agreement", "utility status": "", "link(s)": "", notes: LANTERN_DESC["pike"] },
+  { "short name": "Wolfe Co. Bitcoin mining DC", city: "", county: "Wolfe", size: "", developer: "unnamed", "P&Z status": "operating, reportedly shutting down", "utility status": "", "link(s)": "", notes: LANTERN_DESC["wolfe"] }
+];
+// Calvert City isn't in CITY_COORDS yet — add it.
+CITY_COORDS["calvert city"] = [36.9970, -88.3595];
+
+
+const REG_COLORS = { "moratorium": "#e67e22", "ban": "#c0392b", "ordinance": "#2980b9" };
+const REG_COLOR_DEFAULT = "#7f8c8d";
+
+let map = L.map('map').setView([37.6, -85.3], 7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors',
+  maxZoom: 18
+}).addTo(map);
+
+let countyLayer, cityRegLayer, projectsLayer, transmissionLayer;
+let countiesGeoData = null;
+let regulationRows = [];
+
+function setStatus(msg) {
+  document.getElementById('statusMsg').textContent = msg;
+}
+
+function normKey(s) {
+  return (s || "").trim().toLowerCase();
+}
+
+function regColor(type) {
+  const t = normKey(type);
+  return REG_COLORS[t] || REG_COLOR_DEFAULT;
+}
+
+function popupRow(label, value) {
+  if (!value) return "";
+  return `<b>${label}:</b> ${value}<br>`;
+}
+
+function regulationPopup(row) {
+  let html = `<div class="popup-table"><div class="popup-title">${row.City || row.County} ${row.City ? "(" + row.County + " County)" : "County"}</div>`;
+  html += popupRow("Type", row.Type);
+  html += popupRow("Time period", row["Time Period"]);
+  html += popupRow("Expiration", row.Expiration);
+  html += popupRow("Contact", row["Local Contact"]);
+  if (row.Link) html += `<b>Source:</b> <a href="${row.Link.trim()}" target="_blank" rel="noopener">link</a><br>`;
+  if (row.Notes) html += `<div style="margin-top:4px;color:#555;">${row.Notes}</div>`;
+  html += "</div>";
+  return html;
+}
+
+function projectPopup(row) {
+  const hasCity = row.city && row.city.trim();
+  let locationLabel = hasCity
+    ? row.city.trim() + (row.county ? ", " + row.county.trim() + " County" : "")
+    : (row.county ? row.county.trim() + " County (county-wide — exact site not yet public)" : "Unknown location");
+  let title = row["short name"] && row["short name"].trim() ? row["short name"].trim() : locationLabel;
+  let html = `<div class="popup-table"><div class="popup-title">${title}</div>`;
+  html += popupRow("Location", locationLabel);
+  if (row.stage) html += popupRow("Stage", row.stage);
+  html += popupRow("Size", row.size);
+  html += popupRow("Developer", row.developer);
+  html += popupRow("Planning &amp; zoning", row["P&Z status"]);
+  html += popupRow("Utility status", row["utility status"]);
+  if (row["link(s)"]) {
+    const links = row["link(s)"].split(/\s+(?=https?:\/\/)/).filter(Boolean);
+    links.forEach((l, i) => { html += `<a href="${l.trim()}" target="_blank" rel="noopener">source ${i+1}</a> `; });
+    html += "<br>";
+  }
+  if (row.notes) html += `<div style="margin-top:4px;color:#555;">${row.notes}</div>`;
+  html += "</div>";
+  return html;
+}
+
+function geocodeCity(cityName) {
+  const key = normKey(cityName);
+  return CITY_COORDS[key] || null;
+}
+
+function countyCentroid(countyName) {
+  const key = normKey(countyName).replace(/\s+co\.?$/, "").trim();
+  return COUNTY_CENTROIDS[key] || null;
+}
+
+function inferCounty(row) {
+  if (row.county && row.county.trim()) return row.county.trim();
+  const cityKey = normKey(row.city);
+  return CITY_TO_COUNTY[cityKey] ? CITY_TO_COUNTY[cityKey] : "";
+}
+
+// ---------- LOAD COUNTY BOUNDARIES + REGULATIONS + CENTROIDS ----------
+Promise.all([
+  fetch(COUNTIES_GEOJSON).then(r => r.json()),
+  fetch(COUNTY_CENTROIDS_JSON).then(r => r.json()),
+  fetch(REGULATION_CSV).then(r => r.text()).then(text => {
+    // The sheet has a stray reference URL in row 1 before the real header row.
+    // Drop any leading line(s) that don't look like the header.
+    let lines = text.split(/\r?\n/);
+    while (lines.length && !/county/i.test(lines[0])) {
+      lines.shift();
+    }
+    const cleaned = lines.join("\n");
+    return new Promise((resolve) => {
+      Papa.parse(cleaned, {
+        header: true, skipEmptyLines: true,
+        complete: (res) => resolve(res.data)
+      });
+    });
+  })
+]).then(([counties, centroids, regRows]) => {
+  countiesGeoData = counties;
+  COUNTY_CENTROIDS = centroids;
+  // regRows sheet has a title row baked in as row 1 sometimes; filter rows lacking County/City/Type
+  regulationRows = regRows.filter(r => (r.County || r.CIty || r.City) && r["Type (moratorium, ban, ordinance)"]);
+  // normalize header name variance (sheet uses "CIty" typo in header)
+  regulationRows = regulationRows.map(r => ({
+    County: r.County,
+    City: r.CIty || r.City,
+    Level: r["Level (city or county)"],
+    Type: r["Type (moratorium, ban, ordinance)"],
+    "Time Period": r["Time Period (if applicable)"],
+    Expiration: r["Expiration (if applicable)"],
+    Link: r.Link,
+    "Local Contact": r["Local Contact"],
+    Notes: r.Notes
+  }));
+
+  const countyRegByName = {};
+  regulationRows.forEach(r => {
+    if (normKey(r.Level) === "county") {
+      countyRegByName[normKey(r.County)] = r;
+    }
+  });
+
+  countyLayer = L.geoJSON(countiesGeoData, {
+    style: (feature) => {
+      const reg = countyRegByName[normKey(feature.properties.NAME)];
+      return {
+        fillColor: reg ? regColor(reg.Type) : "#e0e0e0",
+        fillOpacity: reg ? 0.55 : 0.08,
+        color: "#555",
+        weight: 1
+      };
+    },
+    onEachFeature: (feature, layer) => {
+      const reg = countyRegByName[normKey(feature.properties.NAME)];
+      if (reg) {
+        layer.bindPopup(regulationPopup(reg));
+      } else {
+        layer.bindPopup(`<div class="popup-table"><div class="popup-title">${feature.properties.NAME} County</div>No known county-wide data center regulation on file.</div>`);
+      }
+    }
+  }).addTo(map);
+
+  // City-level regulation points
+  const cityMarkers = [];
+  regulationRows.forEach(r => {
+    if (normKey(r.Level) === "city" && r.City) {
+      const coords = geocodeCity(r.City);
+      if (coords) {
+        const m = L.circleMarker(coords, {
+          radius: 8, fillColor: regColor(r.Type), color: "#222", weight: 1.5, fillOpacity: 0.9
+        }).bindPopup(regulationPopup(r));
+        cityMarkers.push(m);
+      }
+    }
+  });
+  cityRegLayer = L.layerGroup(cityMarkers).addTo(map);
+
+  setStatus("Regulations loaded. Loading proposed projects…");
+  loadProjects();
+}).catch(err => {
+  console.error(err);
+  setStatus("Error loading county/regulation data — see console.");
+});
+
+// ---------- LOAD PROPOSED PROJECTS ----------
+function cityMarkerIcon() {
+  return L.divIcon({
+    className: '',
+    html: '<div style="background:#8e44ad;width:12px;height:12px;border-radius:2px;border:1.5px solid #fff;box-shadow:0 0 2px rgba(0,0,0,0.6);transform:rotate(45deg);"></div>',
+    iconSize: [12, 12]
+  });
+}
+
+function buildProjectMarker(row) {
+  const county = inferCounty(row);
+  const countyKey = normKey(county);
+  // enrich with Lantern stage/notes when we have it and the sheet didn't already say more
+  if (LANTERN_STAGE[countyKey]) row.stage = LANTERN_STAGE[countyKey];
+  if (LANTERN_DESC[countyKey] && !(row.notes || "").includes("Kentucky Lantern")) {
+    row.notes = (row.notes ? row.notes + " " : "") + LANTERN_DESC[countyKey];
+  }
+
+  const cityCoords = geocodeCity(row.city);
+  if (cityCoords) {
+    return L.marker(cityCoords, { icon: cityMarkerIcon() }).bindPopup(projectPopup(row));
+  }
+  // No specific city known — place at the real county centroid instead of
+  // guessing a town, and mark it visually as county-wide, not a precise site.
+  if (county) {
+    const centroid = countyCentroid(county);
+    if (centroid) {
+      const displayRow = Object.assign({}, row, { city: "", county: county });
+      return L.circleMarker(centroid, {
+        radius: 10, fillColor: "#8e44ad", fillOpacity: 0.25,
+        color: "#8e44ad", weight: 2, dashArray: "3,3"
+      }).bindPopup(projectPopup(displayRow));
+    }
+  }
+  return null;
+}
+
+function loadProjects() {
+  Papa.parse(PROJECTS_CSV, {
+    download: true, header: true, skipEmptyLines: true,
+    complete: (res) => {
+      const rows = res.data.filter(r => r.county || r.city);
+      const markers = [];
+      rows.forEach(r => {
+        if (normKey(r.county) === "" && normKey(r.city) === "various") return; // skip roll-up "various" row
+        const m = buildProjectMarker(r);
+        if (m) markers.push(m);
+      });
+      // Add Lantern-reported projects not already in the tracking sheet
+      LANTERN_ONLY_PROJECTS.forEach(r => {
+        const m = buildProjectMarker(Object.assign({}, r));
+        if (m) markers.push(m);
+      });
+      projectsLayer = L.layerGroup(markers).addTo(map);
+      setStatus("Loading transmission lines…");
+      loadTransmission();
+    },
+    error: (err) => {
+      console.error(err);
+      setStatus("Error loading proposed projects — see console.");
+    }
+  });
+}
+
+// ---------- LOAD TRANSMISSION LINES ----------
+function loadTransmission() {
+  fetch(TRANSMISSION_URL).then(r => r.json()).then(data => {
+    transmissionLayer = L.geoJSON(data, {
+      style: { color: "#f1c40f", weight: 1.5, opacity: 0.8 },
+      onEachFeature: (feature, layer) => {
+        const p = feature.properties || {};
+        layer.bindPopup(`<div class="popup-table"><b>Voltage:</b> ${p.voltage || "unknown"} kV<br><b>Owner:</b> ${p.owner || "unknown"}<br><b>Type:</b> ${p.type || ""}</div>`);
+      }
+    }); // not added by default — toggle via layer control
+    buildLayerControl();
+    setStatus("");
+    setTimeout(() => { document.getElementById('statusMsg').style.display = 'none'; }, 1500);
+  }).catch(err => {
+    console.error(err);
+    setStatus("Transmission line layer unavailable (external service). Other layers loaded.");
+    buildLayerControl();
+  });
+}
+
+function buildLayerControl() {
+  const overlays = {
+    "County / city regulations": countyLayer,
+    "City regulation points": cityRegLayer,
+    "Proposed data centers": projectsLayer
+  };
+  if (transmissionLayer) overlays["Transmission lines"] = transmissionLayer;
+  L.control.layers(null, overlays, { collapsed: false }).addTo(map);
+
+  const legend = L.control({ position: 'bottomright' });
+  legend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'legend');
+    div.innerHTML = `
+      <h4>Local regulations</h4>
+      <span class="swatch" style="background:${REG_COLORS.moratorium}"></span>Moratorium<br>
+      <span class="swatch" style="background:${REG_COLORS.ban}"></span>Ban<br>
+      <span class="swatch" style="background:${REG_COLORS.ordinance}"></span>Ordinance<br>
+      <span class="swatch" style="background:#e0e0e0"></span>None on file<br>
+      <h4 style="margin-top:8px;">Proposed data centers</h4>
+      <span style="display:inline-block;width:10px;height:10px;background:#8e44ad;transform:rotate(45deg);margin-right:8px;"></span>Specific site known<br>
+      <span class="dot" style="background:transparent;border:2px dashed #8e44ad;"></span>County-wide (exact site unknown)<br>
+      <h4 style="margin-top:8px;">Grid</h4>
+      <span style="display:inline-block;width:16px;height:2px;background:#f1c40f;margin-right:6px;vertical-align:middle;"></span>Transmission line
+    `;
+    return div;
+  };
+  legend.addTo(map);
+}
+</script>
+</body>
+</html>
