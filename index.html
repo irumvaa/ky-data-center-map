@@ -242,8 +242,8 @@ function regulationPopup(r){
     html += popupRow("Expiration", r.expiration);
   }
   html += popupRow("Contact", r.contact);
+  if(r.link) html += popupRow("Source", `<a href="${r.link}" target="_blank" rel="noopener">link</a>`);
   html += "</table>";
-  if(r.link) html += `<div class="pop-links"><a href="${r.link}" target="_blank" rel="noopener">source</a></div>`;
   if(r.notes) html += `<div class="pop-notes">${r.notes}</div>`;
   html += "</div>";
   return html;
@@ -261,17 +261,17 @@ function projectPopup(p){
   html += popupRow("Location", loc);
   html += popupRow("Size", p.size);
   html += popupRow("Developer", p.developer);
+  html += popupRow("Planning &amp; zoning", p.pz);
   html += popupRow("Utility status", p.utility);
   html += popupRow("Tariff", p.tariff);
   html += popupRow("Completion date", p.completionDate);
   html += popupRow("Tenant", p.tenant);
-  html += "</table>";
   if(p.links && p.links.length){
-    html += '<div class="pop-links">' + p.links.map((l,i)=> l.startsWith('http') ? `<a href="${l}" target="_blank" rel="noopener">source ${i+1}</a>` : `<span style="color:#999">${l}</span>`).join(' ') + '</div>';
+    const linkHtml = p.links.map((l,i)=> l.startsWith('http') ? `<a href="${l}" target="_blank" rel="noopener">source ${i+1}</a>` : `<span style="color:#999">${l}</span>`).join(' ');
+    html += popupRow("Source", linkHtml);
   }
-  const pzNote = p.pz ? `Planning &amp; zoning: ${p.pz}` : "";
-  const combinedNotes = [pzNote, p.notes].filter(Boolean).join(" — ");
-  if(combinedNotes) html += `<div class="pop-notes">${combinedNotes}</div>`;
+  html += "</table>";
+  if(p.notes) html += `<div class="pop-notes">${p.notes}</div>`;
   html += "</div>";
   return html;
 }
