@@ -47,6 +47,15 @@ different lightnesses of purple were too easy to confuse from a distance.
   Carroll County projects), their display names are disambiguated by developer so they don't
   look like duplicate pins.
 
+## Search
+The search bar indexes every field on every record — developer, tenant, contact name,
+regulation type, notes, tariff text, not just the name shown on the pin. Typing "TeraWulf",
+"Cara Cooper", or "moratorium" surfaces the matching projects/regulations directly, with a
+"matched: <field>" hint when the match wasn't on the obvious name field. Multi-word queries
+require every word to appear somewhere in the record (not necessarily together). Selecting a
+regulation result zooms straight to it and opens its popup, the same way selecting a project
+does.
+
 ## Popup fields
 Regulations: Location, Type, Duration + Expiration (moratoria only), Contact, Source.
 Projects: Location, Stage, Size, Developer, Planning & zoning, Utility status, Tariff,
