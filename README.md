@@ -81,15 +81,6 @@ read as near-identical from a distance).
   updates, or newer transmission/pipeline data.
 - Gas pipeline data is six-plus years old; treat it as historically informative, not current.
 
-- Now that this is intended to be public-facing (per supervisor), several regulation popups
-  show individual people's names as "Contact" (e.g. Cara Cooper, Matthew Benedict). Worth a
-  check with the org on whether that should stay as-is for a public audience.
-
-## Branding note
-The real Mountain Association logo is embedded directly in `index.html` as base64 (generated
-programmatically from the uploaded logo file, not hand-typed, so there's no risk of the kind of
-transcription corruption that made earlier versions use a plain emoji placeholder instead).
-
 ## Deploy
 Pushed to GitHub Pages from the `main` branch of this repo — live at the URL at the top of this
 file. No build step; `index.html` is the whole site.
