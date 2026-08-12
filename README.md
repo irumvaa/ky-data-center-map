@@ -1,51 +1,97 @@
 # KY Data Center Map
 
-Interactive map of proposed Kentucky data center projects, local moratoria/bans/ordinances,
-and major electric transmission lines. Built in the same branded style as the Mountain
-Association's eky-ev-map: county border shading, a search bar with autocomplete, a stats bar,
-and pill-style filters.
+**Live map: https://irumvaa.github.io/ky-data-center-map/**
+
+Interactive map of proposed Kentucky data center projects, local moratoria/ordinances/pending
+legislation, and major transmission lines and gas pipelines. Built in the same branded style as
+the Mountain Association's eky-ev-map: county border shading, a search bar with autocomplete, a
+stats bar, and pill-style filters.
 
 ## This map is fully static — no spreadsheet connection at all
-Earlier versions of this map fetched the tracking sheets live so it would auto-update. That's
-been removed. Every regulation and project record is baked directly into `index.html` as plain
-JavaScript objects (`regulations` and `projects`). There is no reference to any spreadsheet URL,
-sheet ID, or API key anywhere in this file, in view-source, or in the page's network traffic.
-Transmission lines still load from a public third-party grid dataset (HIFLD, via a NASA-hosted
-mirror) since that's public infrastructure data, not anything from the Mountain Association's
-internal tracking.
+Every regulation and project record is baked directly into `index.html` as plain JavaScript
+objects (`regulations` and `projects`). There is no reference to any spreadsheet URL, sheet ID,
+or API key anywhere in this file, in view-source, or in the page's network traffic. Transmission
+lines and gas pipelines still load live from public third-party government datasets, since
+that's public infrastructure data, not anything from the Mountain Association's internal
+tracking.
 
-**Trade-off:** this map will not reflect new spreadsheet edits automatically anymore. To update
-it, regenerate the embedded `regulations` and `projects` data and rebuild `index.html` (or ask
+**Trade-off:** this map will not reflect new spreadsheet edits automatically. To update it,
+regenerate the embedded `regulations` and `projects` data and rebuild `index.html` (or ask
 Claude to do that from the current tracking sheets, the same way this version was built).
 
-## Static enrichment
-The Kentucky Lantern's July 7, 2026 roundup (updated July 24) of proposed/operating hyperscale
-projects is folded into the `notes` and `stage` fields for matching projects, and several
-counties from that article that weren't yet in the tracking sheet (Greenup, Hancock, Marshall,
-McCracken, Pike, Wolfe, and the Kentucky Industrial Alliance project in Barren County) are
-included as their own entries. This is a one-time snapshot, not live — it will drift out of date
-as the underlying situation changes.
+## Regulation categories
+Moratorium, Ordinance, Pending/Proposed, Other (per supervisor direction — "Ban" was dropped as
+a category since no real entries used it). County shading has three states:
+- **Colored by type** — an actual county-wide regulation
+- **Amber** — at least one city inside the county has a regulation, but the county itself doesn't
+- **Gray** — nothing on file at any level
+
+**Moratoria fall off the map automatically once they expire.** Each regulation's `expiration`
+field (format `M/D/YY`) is checked against today's real date at page load; expired moratoria are
+removed from the active dataset entirely before anything renders, so the county reverts to
+whatever its next-true status is. Blank or unparseable expiration dates are left active rather
+than guessed at.
+
+## Project stages
+Rumored, Proposed, Operating (per supervisor direction — renamed from Speculated/Planned/
+Operating). Each stage has its own pin color, deliberately spread across different color
+families (indigo, magenta, green) rather than shades of one hue, since early versions using
+different lightnesses of purple were too easy to confuse from a distance.
 
 ## Project marker logic
-- If a project has a known city, it's pinned there (solid pin).
-- If only a county is known, the marker is placed at that county's real geographic centroid
-  (computed from the county polygon, not a stand-in city) and shown with a dashed outline, labeled
-  "county-wide — exact site not yet public."
+- Known city → pinned there (solid pin).
+- Only a county known → placed at that county's real geographic centroid (computed from the
+  county polygon, not a stand-in city), shown with a dashed outline, labeled "county-wide —
+  exact site not yet public."
+- Where two distinct real projects share a county with no specific city (e.g. the two separate
+  Carroll County projects), their display names are disambiguated by developer so they don't
+  look like duplicate pins.
+
+## Popup fields
+Regulations: Location, Type, Duration + Expiration (moratoria only), Contact, Source.
+Projects: Location, Stage, Size, Developer, Planning & zoning, Utility status, Tariff,
+Completion date, Tenant, Source. Every field always renders — missing data shows as
+"Not available" (styled distinctly) rather than the row disappearing, so it's clear whether
+something wasn't recorded versus doesn't apply. Tariff/Completion date/Tenant were researched
+and filled in for the handful of best-documented projects; everywhere else, "Not publicly
+disclosed" / "Not yet announced" is used rather than a guess.
+
+## Color palette
+Regulation types use the colorblind-safe Okabe-Ito palette (blue/teal/olive/crimson). Every
+color on the map — regulation types, county states, project stages, transmission lines, gas
+pipelines — was checked pairwise for hue/lightness separation to avoid look-alike colors. See
+git history for the specific fixes made (e.g. Operating was originally green, which was too
+close to Ordinance's teal; project stage colors were originally three shades of purple, which
+read as near-identical from a distance).
+
+## Transmission lines & gas pipelines (toggleable layers, off by default)
+- **Transmission lines**: HIFLD's Electric Power Transmission Lines dataset, sourced via an
+  Esri-hosted (`services2.arcgis.com`) copy rather than a single government agency's own server,
+  for more reliable cross-origin loading. That copy's data was last edited **August 2025**.
+  A known dataset-wide gap: a peer-reviewed review found ~52% of features are missing voltage
+  data, which is why many popups show "unknown" there.
+- **Gas pipelines**: EIA's natural gas transmission pipeline dataset, hosted via US DOT/BTS.
+  This one is a static snapshot from **January 2020** — over six years old. No fresher
+  Esri-hosted equivalent was found when checked.
+- Both layers fail visibly (button text changes to "…unavailable") rather than silently, if the
+  underlying government service is down or blocks the request.
 
 ## Known limitations
-- Since this is now a static snapshot, it needs to be manually regenerated to include new
-  spreadsheet entries or Lantern updates.
-- Transmission line data comes from a third-party public ArcGIS service (not something we
-  control), so if that service is down or renamed, that layer will silently fail to load (map
-  still works, just without that layer).
-- The Mountain Association logo isn't embedded here — the banner uses a plain emoji badge
-  instead (see branding note below).
+- Static snapshot — needs manual regeneration to reflect new spreadsheet entries, Lantern
+  updates, or newer transmission/pipeline data.
+- Gas pipeline data is six-plus years old; treat it as historically informative, not current.
+- The Mountain Association logo isn't embedded — the banner uses a plain emoji badge instead
+  (see branding note below).
+- Now that this is intended to be public-facing (per supervisor), several regulation popups
+  show individual people's names as "Contact" (e.g. Cara Cooper, Matthew Benedict). Worth a
+  check with the org on whether that should stay as-is for a public audience.
 
 ## Branding note
 This map reuses eky-ev-map's CSS/layout patterns but does not embed the actual Mountain
-Association logo image (that would require retyping a large base64 string by hand, risking a
-silent corruption). To add the real logo, copy the `<img src="data:image/png;base64,...">` line
-from eky-ev-map's `.ma-banner` div and paste it in place of the `.ma-badge` div here.
+Association logo image (retyping a large base64 string by hand risks silent corruption). To add
+the real logo, copy the `<img src="data:image/png;base64,...">` line from eky-ev-map's
+`.ma-banner` div and paste it in place of the `.ma-badge` div here.
 
 ## Deploy
-Push to GitHub, enable GitHub Pages on the repo (same pattern as eky-ev-map).
+Pushed to GitHub Pages from the `main` branch of this repo — live at the URL at the top of this
+file. No build step; `index.html` is the whole site.
