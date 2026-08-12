@@ -90,6 +90,42 @@ read as near-identical from a distance).
   updates, or newer transmission/pipeline data.
 - Gas pipeline data is six-plus years old; treat it as historically informative, not current.
 
+## Future: live data via Apps Script
+The plan (same pattern as eky-ev-map) is a Google Apps Script Web App sitting in front of the
+tracking sheets, so non-technical people can edit a spreadsheet directly, with a verification/
+review step before anything reaches the public map — e.g. only rows marked "Approved" in a
+status column get served. This map's code already has the fallback-then-live-refresh scaffolding
+in place for that, currently inert:
+
+- `DATA_SOURCE_URL` near the top of `index.html` is blank. As long as it's blank, the map runs
+  exactly as it does today — 100% on the embedded data, zero network calls beyond map tiles and
+  the transmission/pipeline layers. Nothing changes until someone deploys the Apps Script and
+  pastes its URL in.
+- Once that URL is filled in, the map renders instantly from the embedded fallback data (so it's
+  never blank while waiting on a request), then quietly fetches the Apps Script endpoint in the
+  background. If that succeeds, it swaps in the fresh data and re-renders. If it fails for any
+  reason, the embedded data keeps the map fully working, silently.
+- The Apps Script is expected to return JSON shaped exactly like this:
+  ```json
+  {
+    "regulations": [ { "county": "...", "city": "...", "level": "County|City",
+      "type": "Moratorium|Ordinance|Pending/Proposed|Other", "period": "...",
+      "expiration": "M/D/YY", "link": "...", "notes": "...", "lat": 0.0, "lng": 0.0 } ],
+    "projects": [ { "name": "...", "city": "...", "county": "...", "size": "...",
+      "developer": "...", "pz": "...", "utility": "...", "links": ["..."], "notes": "...",
+      "stage": "Rumored|Proposed|Operating", "countyWide": false, "lat": 0.0, "lng": 0.0,
+      "tariff": "...", "completionDate": "...", "tenant": "..." } ]
+  }
+  ```
+  Same field names as the embedded `regulations`/`projects` arrays in `index.html` — that's not
+  a coincidence, it means whoever builds the Apps Script can copy the shape directly from there.
+- **No `contact` field** — that was removed from this map entirely (data, popups, search) and
+  shouldn't be reintroduced through the live pipeline either.
+- `lat`/`lng` need to be resolved before they reach the script (geocoded from city/county), the
+  client doesn't do that itself.
+- The client always uses the field values as-is; it does not re-verify anything. All review/
+  approval logic needs to live in the Sheet + Apps Script, not here.
+
 ## Deploy
 Pushed to GitHub Pages from the `main` branch of this repo — live at the URL at the top of this
 file. No build step; `index.html` is the whole site.
