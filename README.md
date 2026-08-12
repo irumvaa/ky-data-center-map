@@ -21,8 +21,12 @@ Claude to do that from the current tracking sheets, the same way this version wa
 
 ## Regulation categories
 Moratorium, Ordinance, Pending/Proposed, Other (per supervisor direction — "Ban" was dropped as
-a category since no real entries used it). County shading has three states:
+a category since no real entries used it). County shading has four states:
 - **Colored by type** — an actual county-wide regulation
+- **Diagonal stripes** (type color + amber) — the county has BOTH a county-wide regulation AND
+  a separate city-level one inside it. A solid fill would hide one of those two facts, so this
+  gets its own visual treatment. No county currently has both, but this is handled so it renders
+  correctly if one ever does.
 - **Amber** — at least one city inside the county has a regulation, but the county itself doesn't
 - **Gray** — nothing on file at any level
 
