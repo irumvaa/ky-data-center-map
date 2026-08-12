@@ -151,6 +151,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 <div class="legend">
   <div class="leg-item"><span class="leg-box" style="background:rgba(153,153,153,0.15);border:1.5px solid #7a7a7a"></span>No known regulation</div>
   <div class="leg-item"><span class="leg-box" style="background:rgba(230,159,0,0.3);border:1.5px solid #a66d00"></span>City-level only (no county-wide reg)</div>
+  <div class="leg-item"><span class="leg-box" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px);border:1.5px solid #555"></span>Both county-wide AND city-level</div>
   <div class="leg-item"><span class="leg-dot" style="background:#4338CA;border:2px dashed #2c2a8c"></span>County-wide (exact site unknown)</div>
   <div class="leg-item"><span class="leg-line" style="background:#2c3e50"></span>Transmission line</div>
   <div class="leg-item"><span class="leg-line" style="background:repeating-linear-gradient(90deg,#8B5A2B 0 6px,transparent 6px 9px)"></span>Gas pipeline</div>
@@ -196,6 +197,7 @@ let allCounties=[...new Set(countyGeo.features.map(f=>f.properties.NAME))].sort(
 let regCountiesSet=new Set();
 let regByCounty={};
 let cityOnlyCounties=new Set();
+let bothLevelCounties=new Set();
 let regClusterGroup=null, projClusterGroup=null, countyHighlightLayer=null, transmissionLayer=null, gasPipelineLayer=null;
 let selectedCounty=null, suggestIdx=-1;
 let regFilter='all', showProjects=true, stageFilters=new Set(), showTransmission=false, showGasPipelines=false;
@@ -232,19 +234,31 @@ dropExpiredMoratoria();
 function computeRegStats(){
   regByCounty={};
   cityOnlyCounties = new Set();
+  bothLevelCounties = new Set();
   const countyLevelSet = new Set();
+  const cityLevelSet = new Set();
   regulations.forEach(r=>{
     if(normKey(r.level)==="county"){ regByCounty[normKey(r.county)] = r; countyLevelSet.add(normKey(r.county)); }
   });
   regulations.forEach(r=>{
-    if(normKey(r.level)==="city" && !countyLevelSet.has(normKey(r.county))) cityOnlyCounties.add(normKey(r.county));
+    if(normKey(r.level)==="city"){
+      const key = normKey(r.county);
+      cityLevelSet.add(key);
+      if(!countyLevelSet.has(key)) cityOnlyCounties.add(key);
+    }
   });
+  // A county has "both" when it has its own county-wide regulation AND at
+  // least one separate city-level regulation on top of that — worth
+  // flagging visually since the county-level color alone would hide the
+  // extra city-level layer underneath it.
+  countyLevelSet.forEach(key=>{ if(cityLevelSet.has(key)) bothLevelCounties.add(key); });
   regCountiesSet = new Set(regulations.map(r=>normKey(r.county)));
   countyGeo.features.forEach(f=>{
     const key = normKey(f.properties.NAME);
     f.properties.reg = regByCounty[key] || null;
     f.properties.has_reg = regCountiesSet.has(key);
     f.properties.city_only = cityOnlyCounties.has(key);
+    f.properties.both_levels = bothLevelCounties.has(key);
   });
 }
 computeRegStats();
@@ -364,8 +378,39 @@ function projectPopup(p){
 const map = L.map('map').setView([37.6,-85.3],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',maxZoom:18}).addTo(map);
 
+// Diagonal-stripe SVG patterns for counties that have BOTH a county-wide
+// regulation AND a separate city-level one inside them — a solid fill
+// would hide one of those two facts, so this striped fill signals
+// "there's more going on here than one simple status."
+L.svg().addTo(map); // force the SVG renderer to exist so we can inject <defs> into it
+const mapSvg = map.getPane('overlayPane').querySelector('svg');
+const svgNS = 'http://www.w3.org/2000/svg';
+const stripeDefs = document.createElementNS(svgNS,'defs');
+mapSvg.appendChild(stripeDefs);
+function addStripePattern(id, stripeColor){
+  const pattern = document.createElementNS(svgNS,'pattern');
+  pattern.setAttribute('id', id);
+  pattern.setAttribute('width', '8'); pattern.setAttribute('height', '8');
+  pattern.setAttribute('patternTransform', 'rotate(45)');
+  pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+  const bg = document.createElementNS(svgNS,'rect');
+  bg.setAttribute('width','8'); bg.setAttribute('height','8'); bg.setAttribute('fill', '#E69F00');
+  const stripe = document.createElementNS(svgNS,'rect');
+  stripe.setAttribute('width','4'); stripe.setAttribute('height','8'); stripe.setAttribute('fill', stripeColor);
+  pattern.appendChild(bg); pattern.appendChild(stripe);
+  stripeDefs.appendChild(pattern);
+}
+function stripePatternId(type){ return 'stripe-' + normKey(type).replace(/[^a-z]/g,''); }
+['Moratorium','Ordinance','Pending/Proposed','Other'].forEach(t=>{
+  addStripePattern(stripePatternId(t), regColor(t));
+});
+
 function countyStyle_(f){
   if(!f.properties.has_reg) return {color:'#7a7a7a', weight:1.2, fillColor:'#999999', fillOpacity:0.12};
+  if(f.properties.both_levels && f.properties.reg){
+    const patternId = stripePatternId(f.properties.reg.type);
+    return {color:regColor(f.properties.reg.type), weight:1.6, fillColor:`url(#${patternId})`, fillOpacity:0.55};
+  }
   if(f.properties.city_only) return {color:'#a66d00', weight:1.3, fillColor:'#E69F00', fillOpacity:0.28};
   const reg = f.properties.reg;
   const c = reg ? regColor(reg.type) : '#999999';
@@ -376,6 +421,8 @@ function countyTooltip_(f){
   let status;
   if(!has){
     status = 'No known regulation';
+  } else if(f.properties.both_levels){
+    status = `Has a county-wide regulation (${f.properties.reg.type}) — plus at least one separate city-level regulation inside it`;
   } else if(f.properties.city_only){
     status = 'No county-wide regulation — but at least one city inside has one';
   } else {
@@ -390,7 +437,13 @@ const countyLayer = L.geoJSON(countyGeo,{
     layer.bindTooltip(countyTooltip_(f),{sticky:true});
     layer.on('click', ()=>{
       const reg = f.properties.reg;
-      if(reg){
+      if(f.properties.both_levels && reg){
+        const cityRegs = regulations.filter(r=>normKey(r.level)==='city' && normKey(r.county)===normKey(f.properties.NAME));
+        const list = cityRegs.map(r=>`<li>${r.city} — ${r.type}</li>`).join('');
+        let html = regulationPopup(reg);
+        html = html.replace('</div>', `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ddd;font-size:12px;">Also has separate city-level regulation(s) in this county:<ul style="margin:6px 0 0 16px;">${list}</ul></div></div>`);
+        L.popup({maxWidth:300}).setLatLng(layer.getBounds().getCenter()).setContent(html).openOn(map);
+      } else if(reg){
         L.popup({maxWidth:280}).setLatLng(layer.getBounds().getCenter()).setContent(regulationPopup(reg)).openOn(map);
       } else if(f.properties.city_only){
         const cityRegs = regulations.filter(r=>normKey(r.level)==='city' && normKey(r.county)===normKey(f.properties.NAME));
