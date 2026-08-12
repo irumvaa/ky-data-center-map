@@ -237,6 +237,34 @@ function computeRegStats(){
 }
 computeRegStats();
 
+// ---------- SEARCH INDEX ----------
+// Build a lowercase "search blob" per record covering every field a
+// person might actually type — developer, tenant, contact name,
+// regulation type, notes, etc. — not just the name/county shown on the
+// pin. This makes the search bar find things like "TeraWulf",
+// "moratorium", or "Cara Cooper" even though those aren't the record's
+// primary display name.
+projects.forEach(p=>{
+  p._blob = [p.name,p.city,p.county,p.developer,p.stage,p.size,p.tenant,
+             p.notes,p.pz,p.utility,p.tariff,p.completionDate]
+            .filter(Boolean).join(' ').toLowerCase();
+});
+regulations.forEach(r=>{
+  r._blob = [r.county,r.city,r.type,r.contact,r.notes,r.period,r.level]
+            .filter(Boolean).join(' ').toLowerCase();
+});
+// Per-county blob: lets a plain county-name search also surface counties
+// whose *regulation content* (type, contact, notes) matches the query,
+// not just counties whose name starts with it.
+let countyContentBlob = {};
+regulations.forEach(r=>{
+  const key = normKey(r.county);
+  countyContentBlob[key] = (countyContentBlob[key] || '') + ' ' + r._blob;
+});
+
+function searchTerms(q){ return q.split(/\s+/).filter(Boolean); }
+function blobMatchesAll(blob, terms){ return terms.every(t=>blob.includes(t)); }
+
 function updateStatsBar(){
   document.getElementById('stat-reg-counties').textContent = regCountiesSet.size;
   document.getElementById('stat-no-reg').textContent = allCounties.length - regCountiesSet.size;
@@ -521,24 +549,66 @@ function toggleGasPipelines(){
   }
 }
 
+function fieldMatchLabel(fields, terms){
+  // For a single-word query, tell the person which field actually matched
+  // when it wasn't the obvious name field — e.g. typing a developer name
+  // should say so, not just silently surface a project.
+  if(terms.length!==1) return '';
+  const t=terms[0];
+  for(const [label,val] of fields){
+    if(val && String(val).toLowerCase().includes(t)) return label;
+  }
+  return '';
+}
+
 function onSearchInput(){
-  const q=document.getElementById('county-search').value.trim().toLowerCase();
+  const raw=document.getElementById('county-search').value.trim();
+  const q=raw.toLowerCase();
   document.getElementById('search-clear').classList.toggle('visible', q.length>0);
   if(!q){ closeSuggestions(); return; }
-  const countyMatches = allCounties.filter(c=>c.toLowerCase().startsWith(q));
-  const projMatches = projects.map((p,i)=>({p,i})).filter(o=>o.p.name.toLowerCase().includes(q) || (o.p.city||'').toLowerCase().includes(q));
+  const terms = searchTerms(q);
+
+  const countyMatches = allCounties.filter(c=>{
+    if(c.toLowerCase().startsWith(q)) return true;
+    const blob = countyContentBlob[normKey(c)];
+    return blob && blobMatchesAll(blob, terms);
+  });
+
+  const projMatches = projects.map((p,i)=>({p,i}))
+    .filter(o=>blobMatchesAll(o.p._blob, terms));
+
+  const regMatches = regulations.map((r,i)=>({r,i}))
+    .filter(o=>blobMatchesAll(o.r._blob, terms))
+    .filter(o=>!(o.r.county.toLowerCase().startsWith(q) && terms.length===1)); // don't duplicate a plain county-name search
+
   const sugEl=document.getElementById('suggestions');
-  if(!countyMatches.length && !projMatches.length){ sugEl.classList.remove('open'); return; }
+  if(!countyMatches.length && !projMatches.length && !regMatches.length){ sugEl.classList.remove('open'); return; }
   suggestIdx=-1;
   let html='';
-  countyMatches.slice(0,5).forEach(c=>{
+  countyMatches.slice(0,4).forEach(c=>{
     const has = regCountiesSet.has(normKey(c));
-    html += `<div class="suggestion-item" data-type="county" data-value="${c}" onclick="selectCounty('${c}')"><span class="sug-type-tag sug-tag-county">County</span>${c} County${!has?'<span class="no-reg">no regulation</span>':''}</div>`;
+    html += `<div class="suggestion-item" data-type="county" data-value="${c}"><span class="sug-type-tag sug-tag-county">County</span>${c} County${!has?'<span class="no-reg">no regulation</span>':''}</div>`;
   });
-  projMatches.slice(0,6).forEach(o=>{
-    html += `<div class="suggestion-item" data-type="project" data-value="${o.i}" onclick="selectProject(${o.i})"><span class="sug-type-tag sug-tag-project">Project</span>${o.p.name}<span class="sug-sub">${o.p.county} County</span></div>`;
+  regMatches.slice(0,4).forEach(o=>{
+    const r=o.r;
+    const label = fieldMatchLabel([['contact',r.contact],['notes',r.notes],['type',r.type],['period',r.period]], terms);
+    const sub = `${r.type}${r.city? ' — '+r.city : ''}, ${r.county} County${label?' · matched: '+label:''}`;
+    html += `<div class="suggestion-item" data-type="regulation" data-value="${o.i}"><span class="sug-type-tag" style="background:#e8dff5;color:#5e2d73;">Regulation</span>${r.city||r.county+' County'}<span class="sug-sub">${sub}</span></div>`;
+  });
+  projMatches.slice(0,5).forEach(o=>{
+    const p=o.p;
+    const label = fieldMatchLabel([['developer',p.developer],['tenant',p.tenant],['notes',p.notes],['stage',p.stage]], terms);
+    html += `<div class="suggestion-item" data-type="project" data-value="${o.i}"><span class="sug-type-tag sug-tag-project">Project</span>${p.name}<span class="sug-sub">${p.county} County${label?' · matched: '+label:''}</span></div>`;
   });
   sugEl.innerHTML=html;
+  sugEl.querySelectorAll('.suggestion-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const t=el.dataset.type, v=el.dataset.value;
+      if(t==='county') selectCounty(v);
+      else if(t==='project') selectProject(parseInt(v));
+      else if(t==='regulation') selectRegulation(parseInt(v));
+    });
+  });
   sugEl.classList.add('open');
 }
 function onSearchKey(e){
@@ -547,7 +617,12 @@ function onSearchKey(e){
   if(!items.length) return;
   if(e.key==='ArrowDown'){ e.preventDefault(); suggestIdx=Math.min(suggestIdx+1, items.length-1); items.forEach((el,i)=>el.classList.toggle('selected', i===suggestIdx)); }
   else if(e.key==='ArrowUp'){ e.preventDefault(); suggestIdx=Math.max(suggestIdx-1, 0); items.forEach((el,i)=>el.classList.toggle('selected', i===suggestIdx)); }
-  else if(e.key==='Enter' && suggestIdx>=0){ const el=items[suggestIdx]; if(el.dataset.type==='county') selectCounty(el.dataset.value); else selectProject(parseInt(el.dataset.value)); }
+  else if(e.key==='Enter' && suggestIdx>=0){
+    const el=items[suggestIdx];
+    if(el.dataset.type==='county') selectCounty(el.dataset.value);
+    else if(el.dataset.type==='regulation') selectRegulation(parseInt(el.dataset.value));
+    else selectProject(parseInt(el.dataset.value));
+  }
   else if(e.key==='Escape') clearSearch();
 }
 function closeSuggestions(){ document.getElementById('suggestions').classList.remove('open'); }
@@ -582,6 +657,20 @@ function selectProject(idx){
   renderProjects();
   map.setView([p.lat,p.lng], p.countyWide?9:13);
   L.popup({maxWidth:330}).setLatLng([p.lat,p.lng]).setContent(projectPopup(p)).openOn(map);
+}
+function selectRegulation(idx){
+  const r=regulations[idx];
+  if(!r || r.lat==null) return;
+  document.getElementById('county-search').value='';
+  document.getElementById('search-clear').classList.remove('visible');
+  closeSuggestions();
+  selectedCounty=null;
+  const label = r.city || (r.county+' County');
+  document.getElementById('county-tag-wrap').innerHTML = `<div class="county-tag">${label} <button onclick="clearSearch()">✕</button></div>`;
+  document.getElementById('no-reg-notice-wrap').innerHTML='';
+  if(countyHighlightLayer){ map.removeLayer(countyHighlightLayer); countyHighlightLayer=null; }
+  map.setView([r.lat,r.lng], 11);
+  L.popup({maxWidth:280}).setLatLng([r.lat,r.lng]).setContent(regulationPopup(r)).openOn(map);
 }
 function clearSearch(){
   selectedCounty=null;
