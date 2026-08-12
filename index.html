@@ -60,7 +60,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .divider{width:1px;height:20px;background:#e2e0db;margin:0 2px;flex-shrink:0}
 .badge-count{margin-left:auto;font-size:12px;color:#666;background:#f0efe9;padding:4px 12px;border-radius:20px;white-space:nowrap}
 #map{width:100%;height:calc(100vh - 260px);min-height:360px}
-.legend{background:#fff;border-top:1px solid #e2e0db;padding:9px 18px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.legend{background:#fff;border-top:1px solid #e2e0db;border-bottom:1px solid #e2e0db;padding:9px 18px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#555}
 .leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 .leg-box{width:14px;height:11px;border-radius:2px;flex-shrink:0}
@@ -148,7 +148,6 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <button class="pill" id="btn-gaspipe" onclick="toggleGasPipelines()">Show gas pipelines</button>
   <span class="badge-count" id="count">0 shown</span>
 </div>
-<div id="map"></div>
 <div class="legend">
   <div class="leg-item"><span class="leg-dot" style="background:#0072B2"></span>Moratorium</div>
   <div class="leg-item"><span class="leg-dot" style="background:#009E73"></span>Ordinance</div>
@@ -164,6 +163,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <div class="leg-item"><span class="leg-line" style="background:repeating-linear-gradient(90deg,#8B5A2B 0 6px,transparent 6px 9px)"></span>Gas pipeline</div>
   <span class="leg-credit">Data: KY DC tracking sheets, Kentucky Lantern, HIFLD (transmission, ~2025) &amp; EIA (pipelines, 2020 snapshot) · Map: OpenStreetMap</span>
 </div>
+<div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
