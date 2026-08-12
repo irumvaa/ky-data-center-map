@@ -90,6 +90,11 @@ read as near-identical from a distance).
   underlying government service is down or blocks the request.
 
 ## Known limitations
+- **Two placeholder links need to be filled in**: the "share new information" and "report a
+  problem" links in the banner under the header currently point to `#PLACEHOLDER-add-data-form`
+  and `#PLACEHOLDER-report-problem-form` — search `index.html` for `PLACEHOLDER` to find and
+  replace both once those Google Forms exist. The `energy@mtassociation.org` mailto link is
+  already live.
 - Static snapshot — needs manual regeneration to reflect new spreadsheet entries, Lantern
   updates, or newer transmission/pipeline data.
 - Gas pipeline data is six-plus years old; treat it as historically informative, not current.
