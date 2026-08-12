@@ -274,7 +274,7 @@ let countyContentBlob = {};
 function buildSearchIndex(){
   projects.forEach(p=>{
     p._blob = [p.name,p.city,p.county,p.developer,p.stage,p.size,p.tenant,
-               p.notes,p.pz,p.utility,p.tariff,p.completionDate]
+               p.notes,p.pz,p.utility,expandUtilityStatus(p.utility),p.tariff,p.completionDate]
               .filter(Boolean).join(' ').toLowerCase();
   });
   regulations.forEach(r=>{
@@ -328,6 +328,21 @@ function stageBadgeClass(stage){
 
 function popupRow(label,value){ const shown = value ? value : '<span class="field-unavailable">Not available</span>'; return `<tr><td>${label}</td><td>${shown}</td></tr>`; }
 
+// Utility status uses shorthand from the source tracking sheet (TSR, ESA)
+// that isn't self-explanatory to a public reader. Confirmed with the
+// Mountain Association (Aug 2026): TSR = Transmission Service Request,
+// ESA = Electric Service Agreement. Going forward the standardized values
+// are "TSR - Applied", "TSR - Approved", "ESA - Applied", "ESA - Approved".
+// Older entries that just say a bare "TSR" (no applied/approved) are left
+// as-is rather than guessing which stage they're actually at — the
+// acronym itself is still expanded for readability.
+function expandUtilityStatus(val){
+  if(!val) return val;
+  return val
+    .replace(/\bTSR\b/, 'TSR (Transmission Service Request)')
+    .replace(/\bESA\b/, 'ESA (Electric Service Agreement)');
+}
+
 function regulationPopup(r){
   const isCounty = normKey(r.level) === 'county';
   const isMoratorium = normKey(r.type) === 'moratorium';
@@ -361,7 +376,7 @@ function projectPopup(p){
   html += popupRow("Size", p.size);
   html += popupRow("Developer", p.developer);
   html += popupRow("Planning &amp; zoning", p.pz);
-  html += popupRow("Utility status", p.utility);
+  html += popupRow("Utility status", expandUtilityStatus(p.utility));
   html += popupRow("Tariff", p.tariff);
   html += popupRow("Completion date", p.completionDate);
   html += popupRow("Tenant", p.tenant);
