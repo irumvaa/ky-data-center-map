@@ -80,17 +80,15 @@ read as near-identical from a distance).
 - Static snapshot — needs manual regeneration to reflect new spreadsheet entries, Lantern
   updates, or newer transmission/pipeline data.
 - Gas pipeline data is six-plus years old; treat it as historically informative, not current.
-- The Mountain Association logo isn't embedded — the banner uses a plain emoji badge instead
-  (see branding note below).
+
 - Now that this is intended to be public-facing (per supervisor), several regulation popups
   show individual people's names as "Contact" (e.g. Cara Cooper, Matthew Benedict). Worth a
   check with the org on whether that should stay as-is for a public audience.
 
 ## Branding note
-This map reuses eky-ev-map's CSS/layout patterns but does not embed the actual Mountain
-Association logo image (retyping a large base64 string by hand risks silent corruption). To add
-the real logo, copy the `<img src="data:image/png;base64,...">` line from eky-ev-map's
-`.ma-banner` div and paste it in place of the `.ma-badge` div here.
+The real Mountain Association logo is embedded directly in `index.html` as base64 (generated
+programmatically from the uploaded logo file, not hand-typed, so there's no risk of the kind of
+transcription corruption that made earlier versions use a plain emoji placeholder instead).
 
 ## Deploy
 Pushed to GitHub Pages from the `main` branch of this repo — live at the URL at the top of this
