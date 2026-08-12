@@ -95,12 +95,12 @@ read as near-identical from a distance).
 - Gas pipeline data is six-plus years old; treat it as historically informative, not current.
 
 ## Utility status vocabulary
-Confirmed with the Mountain Association (Aug 2026, via Byron): **TSR = Transmission Service
-Request**, **ESA = Electric Service Agreement**. Going forward, standardize new entries to one
-of: `TSR - Applied`, `TSR - Approved`, `ESA - Applied`, `ESA - Approved`. A couple of existing
-entries just say a bare `TSR` (no applied/approved distinction) since that's what the original
-source data had — left as-is rather than guessed at, but the acronym itself is spelled out in
-the popup and searchable either way (e.g. searching "transmission service request" finds them).
+**TSR = Transmission Service Request**, **ESA = Electric Service Agreement**. Going forward,
+standardize new entries to one of: `TSR - Applied`, `TSR - Approved`, `ESA - Applied`,
+`ESA - Approved`. A couple of existing entries just say a bare `TSR` (no applied/approved
+distinction) since that's what the original source data had — left as-is rather than guessed
+at, but the acronym itself is spelled out in the popup and searchable either way (e.g. searching
+"transmission service request" finds them).
 
 ## Future: live data via Apps Script
 The plan (same pattern as eky-ev-map) is a Google Apps Script Web App sitting in front of the
