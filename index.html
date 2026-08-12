@@ -132,16 +132,16 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 <div class="controls">
   <span class="ctrl-label">Regulation:</span>
   <button class="pill active" id="btn-reg-all" onclick="setRegFilter('all')">All</button>
+  <button class="pill" id="btn-reg-pending" onclick="setRegFilter('pending')"><span class="dot" style="background:#7CB342"></span>Pending/Proposed</button>
   <button class="pill" id="btn-reg-moratorium" onclick="setRegFilter('moratorium')"><span class="dot" style="background:#0072B2"></span>Moratorium</button>
   <button class="pill" id="btn-reg-ordinance" onclick="setRegFilter('ordinance')"><span class="dot" style="background:#009E73"></span>Ordinance</button>
-  <button class="pill" id="btn-reg-pending" onclick="setRegFilter('pending')"><span class="dot" style="background:#7CB342"></span>Pending/Proposed</button>
   <button class="pill" id="btn-reg-other" onclick="setRegFilter('other')"><span class="dot" style="background:#B2182B"></span>Other</button>
   <div class="divider"></div>
   <span class="ctrl-label">Projects:</span>
   <button class="pill active" id="btn-proj-show" onclick="toggleProjects()">Show projects</button>
+  <button class="pill" id="btn-stage-rumored" onclick="toggleStage('Rumored')"><span class="dot" style="background:#16A34A"></span>Rumored</button>
   <button class="pill" id="btn-stage-proposed" onclick="toggleStage('Proposed')"><span class="dot" style="background:#4338CA"></span>Proposed</button>
   <button class="pill" id="btn-stage-operating" onclick="toggleStage('Operating')"><span class="dot" style="background:#D1239D"></span>Operating</button>
-  <button class="pill" id="btn-stage-rumored" onclick="toggleStage('Rumored')"><span class="dot" style="background:#16A34A"></span>Rumored</button>
   <div class="divider"></div>
   <span class="ctrl-label">Layers:</span>
   <button class="pill" id="btn-transmission" onclick="toggleTransmission()">Show transmission lines</button>
