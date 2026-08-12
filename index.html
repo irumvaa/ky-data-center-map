@@ -21,6 +21,10 @@ header{background:#0f3d2e;color:#fff;padding:16px 24px;display:flex;align-items:
 header h1{font-size:17px;font-weight:600;line-height:1.2}
 header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .source-tag{font-size:11px;color:#c9b3dd;background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:20px;white-space:nowrap}
+.about-banner{background:#f7f4fb;border-bottom:1px solid #e3d8ef;padding:12px 24px;font-size:13.5px;line-height:1.55;color:#3a3550;}
+.about-banner a{color:#7d3c98;font-weight:600;text-decoration:underline;}
+.about-banner a:hover{color:#5e2d73;}
+@media(max-width:600px){.about-banner{padding:10px 14px;font-size:12.5px;}}
 .header-actions{display:flex;gap:8px;flex-wrap:wrap}
 .header-btn{font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;text-decoration:none;white-space:nowrap;transition:opacity .15s;background:#a569bd;color:#fff;border:1.5px solid #a569bd}
 .header-btn:hover{opacity:0.85}
@@ -111,6 +115,13 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   </div>
   <span class="source-tag">Source: Mountain Association tracking data &amp; Kentucky Lantern · Aug 2026</span>
 </header>
+<div class="about-banner">
+  This map is publicly sourced and maintained by the Mountain Association to track proposed data
+  centers, as well as local regulations and zoning ordinances regarding data centers. All users
+  are welcome to share new information via <a href="#PLACEHOLDER-add-data-form" title="Placeholder — link to be added">this form</a>,
+  report a problem via <a href="#PLACEHOLDER-report-problem-form" title="Placeholder — link to be added">this form</a>,
+  or to be in touch with Mountain Association at <a href="mailto:energy@mtassociation.org">energy@mtassociation.org</a>.
+</div>
 <div class="stats-bar">
   <div class="stat"><strong id="stat-reg-counties">0</strong> counties/cities with regulations</div>
   <div class="stat-divider"></div>
