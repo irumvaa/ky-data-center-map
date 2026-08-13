@@ -63,11 +63,17 @@ different lightnesses of purple were too easy to confuse from a distance.
 
 ## Search
 The search bar indexes every field on every record, including developer, tenant, regulation type,
-notes, and tariff text, not just the name shown on the pin. Typing "TeraWulf" or "moratorium"
-surfaces the matching projects/regulations directly, with a "matched: <field>" hint when the
-match wasn't on the obvious name field. Multi-word queries require every word to appear
-somewhere in the record (not necessarily together). Selecting a regulation result zooms straight
-to it and opens its popup, the same way selecting a project does.
+notes, tariff text, and now the datacentermap.com directory layer too, not just the name shown
+on the pin. Typing "TeraWulf" or "moratorium" surfaces the matching projects/regulations/
+facilities directly, with a "matched: <field>" hint when the match wasn't on the obvious name
+field. Multi-word queries require every word to appear somewhere in the record (not necessarily
+together). Selecting any result zooms straight to it and opens its popup.
+
+**City search**: every city mentioned anywhere across regulations, projects, or the directory
+layer (27 cities total) is independently searchable, resolves to its actual county, and zooms
+directly to that city's real coordinates rather than the county centroid. This works even for
+cities with no tracked project or regulation of their own, like Wilmore or Prospect, which are
+only on the map because a directory-layer facility happens to be there.
 
 Also handles:
 - **Typos**: a Levenshtein-distance fuzzy fallback catches things like "Terawlf" or
@@ -75,11 +81,13 @@ Also handles:
   ("pipe" was accidentally matching "Pike" County before this limit was added, tested and fixed).
 - **Units**: "500mw", "500 MW", and "500-MW" all match the same way; "megawatt"/"gigawatt"
   normalize to "mw"/"gw" so they match the abbreviated form actually used in the data.
+- **Comma-formatted numbers**: "140,000" and "140000" match either way.
 - **Plurals**: mostly falls out of the typo tolerance above ("moratoriums" is edit-distance 1
   from "moratorium").
-- **County search checks project data too**: previously a plain county-name search only looked
-  at regulation records for that county, so a county with only a project (no regulation) and an
-  unusual spelling wouldn't surface. Now it checks both.
+- **County search checks all three datasets**: previously a plain county-name search only
+  looked at regulation records for that county. Now it checks regulations, projects, and the
+  directory layer, so e.g. Jessamine County (which has no tracked regulation or project) still
+  surfaces when searched, because KUSI Data Center is there.
 
 ## Popup fields
 Regulations: Location, Type, Duration + Expiration (moratoria only), Source. (No individual
