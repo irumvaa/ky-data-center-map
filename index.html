@@ -392,7 +392,7 @@ function projectPopup(p){
   html += popupRow("Completion date", p.completionDate);
   html += popupRow("Tenant", p.tenant);
   const linkHtml = (p.links && p.links.length)
-    ? p.links.map((l,i)=> l.startsWith('http') ? `<a href="${l}" target="_blank" rel="noopener">source ${i+1}</a>` : `<span style="color:#999">${l}</span>`).join(' ')
+    ? p.links.map((l,i)=> l.startsWith('http') ? `<a href="${l}" target="_blank" rel="noopener">source ${i+1}</a>` : `<span style="color:#999">${l}</span>`).join(', ')
     : "";
   html += popupRow("Source", linkHtml);
   html += "</table>";
