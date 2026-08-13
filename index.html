@@ -153,11 +153,11 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <button class="pill" id="btn-stage-rumored" onclick="toggleStage('Rumored')"><span class="pill-pin" id="pin-rumored"></span>Rumored</button>
   <button class="pill" id="btn-stage-proposed" onclick="toggleStage('Proposed')"><span class="pill-pin" id="pin-proposed"></span>Proposed</button>
   <button class="pill" id="btn-stage-operating" onclick="toggleStage('Operating')"><span class="pill-pin" id="pin-operating"></span>Operating</button>
+  <button class="pill" id="btn-other-dc" onclick="toggleOtherDC()">DC from datacentermap.com</button>
   <div class="divider"></div>
   <span class="ctrl-label">Layers:</span>
   <button class="pill" id="btn-transmission" onclick="toggleTransmission()">Show transmission lines</button>
   <button class="pill" id="btn-gaspipe" onclick="toggleGasPipelines()">Show gas pipelines</button>
-  <button class="pill" id="btn-other-dc" onclick="toggleOtherDC()">DC from datacentermap.com</button>
   <span class="badge-count" id="count">0 shown</span>
 </div>
 <div class="legend">
@@ -408,7 +408,7 @@ function blobMatchesAll(blob, terms){ return terms.every(t=>fuzzyIncludes(blob, 
 function updateStatsBar(){
   document.getElementById('stat-reg-counties').textContent = regCountiesSet.size;
   document.getElementById('stat-no-reg').textContent = allCounties.length - regCountiesSet.size;
-  document.getElementById('stat-projects').textContent = projects.length;
+  document.getElementById('stat-projects').textContent = projects.length + (showOtherDC ? otherDataCenters.length : 0);
 }
 updateStatsBar();
 
@@ -657,6 +657,7 @@ function toggleOtherDC(){
   showOtherDC = !showOtherDC;
   document.getElementById('btn-other-dc').classList.toggle('active', showOtherDC);
   renderOtherDataCenters();
+  updateStatsBar();
 }
 
 function renderRegulations(){
