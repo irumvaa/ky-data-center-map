@@ -738,6 +738,60 @@ function toggleStage(stage){
   document.getElementById(id).classList.toggle('active', stageFilters.has(stage));
   renderProjects();
 }
+// Shared fetch-with-fallback for live government data layers (transmission
+// lines, gas pipelines). Always tries the live source first — this is real
+// public infrastructure data, so freshness matters and there's no reason
+// not to check every time. If that fails (source down, moved, or its
+// structure changed so parsing breaks), falls back to the last
+// successfully fetched copy, cached in the browser's localStorage from a
+// prior visit, so the layer keeps working instead of just failing. Only
+// shows the "unavailable" error state when there's truly nothing to fall
+// back on (e.g. the very first time anyone loads the map after the source
+// goes down). This is different from the datacentermap.com layer on
+// purpose — these two sources are public REST APIs meant for exactly this
+// kind of programmatic, repeated access; datacentermap.com is not.
+function loadCachedGeoJSON(cacheKey){
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(!parsed || !parsed.data || !parsed.savedAt) return null;
+    return parsed;
+  } catch(e){
+    return null; // localStorage blocked (private browsing) or corrupted — fail safe, no cache
+  }
+}
+function saveCachedGeoJSON(cacheKey, data){
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify({data, savedAt: Date.now()}));
+  } catch(e){
+    // storage full or blocked — not fatal, just means no fallback available next time
+  }
+}
+function fetchLiveWithFallback(url, cacheKey, layerLabel){
+  return fetch(url).then(r=>{
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(data=>{
+    if(!data || !Array.isArray(data.features) || data.features.length===0){
+      throw new Error('No features returned (' + JSON.stringify(data && data.error ? data.error : data).slice(0,200) + ')');
+    }
+    saveCachedGeoJSON(cacheKey, data);
+    return {data, fromCache:false};
+  }).catch(err=>{
+    console.warn(layerLabel+' live fetch failed, checking for a cached copy:', err);
+    const cached = loadCachedGeoJSON(cacheKey);
+    if(cached) return {data:cached.data, fromCache:true, savedAt:cached.savedAt};
+    throw err; // no live data and no cache either — nothing to show
+  });
+}
+function cacheAgeLabel(savedAt){
+  const days = Math.floor((Date.now()-savedAt) / 86400000);
+  if(days < 1) return 'today';
+  if(days === 1) return '1 day ago';
+  return days+' days ago';
+}
+
 function toggleTransmission(){
   showTransmission=!showTransmission;
   const b=document.getElementById('btn-transmission');
@@ -745,13 +799,7 @@ function toggleTransmission(){
   if(showTransmission){
     b.textContent='Loading transmission lines…';
     if(transmissionLayer){ transmissionLayer.addTo(map); b.textContent='Hide transmission lines'; return; }
-    fetch(TRANSMISSION_URL).then(r=>{
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      return r.json();
-    }).then(data=>{
-      if(!data || !Array.isArray(data.features) || data.features.length===0){
-        throw new Error('No features returned (' + JSON.stringify(data && data.error ? data.error : data).slice(0,200) + ')');
-      }
+    fetchLiveWithFallback(TRANSMISSION_URL, 'ky-dc-map-cache-transmission', 'Transmission line layer').then(({data,fromCache,savedAt})=>{
       transmissionLayer = L.geoJSON(data,{
         style:{color:'#2c3e50',weight:1.8,opacity:0.85},
         onEachFeature:(feature,layer)=>{
@@ -759,7 +807,7 @@ function toggleTransmission(){
           layer.bindPopup(`<div class="pop-table"><b>Voltage:</b> ${p.VOLTAGE||'unknown'} kV<br><b>Owner:</b> ${p.OWNER||'unknown'}<br><b>Status:</b> ${p.STATUS||'unknown'}</div>`);
         }
       }).addTo(map);
-      b.textContent='Hide transmission lines';
+      b.textContent = fromCache ? `Hide transmission lines (cached ${cacheAgeLabel(savedAt)}, live source unavailable)` : 'Hide transmission lines';
     }).catch(err=>{
       console.warn('Transmission line layer unavailable:', err);
       b.textContent='Transmission lines unavailable (see console)';
@@ -779,13 +827,7 @@ function toggleGasPipelines(){
   if(showGasPipelines){
     b.textContent='Loading gas pipelines…';
     if(gasPipelineLayer){ gasPipelineLayer.addTo(map); b.textContent='Hide gas pipelines'; return; }
-    fetch(GAS_PIPELINE_URL).then(r=>{
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      return r.json();
-    }).then(data=>{
-      if(!data || !Array.isArray(data.features) || data.features.length===0){
-        throw new Error('No features returned (' + JSON.stringify(data && data.error ? data.error : data).slice(0,200) + ')');
-      }
+    fetchLiveWithFallback(GAS_PIPELINE_URL, 'ky-dc-map-cache-gaspipe', 'Gas pipeline layer').then(({data,fromCache,savedAt})=>{
       gasPipelineLayer = L.geoJSON(data,{
         style:{color:'#8B5A2B',weight:1.6,opacity:0.85,dashArray:'6,3'},
         onEachFeature:(feature,layer)=>{
@@ -793,7 +835,7 @@ function toggleGasPipelines(){
           layer.bindPopup(`<div class="pop-table"><b>Type:</b> ${p.typepipe||'unknown'}<br><b>Operator:</b> ${p.operator||'unknown'}<br><b>Status:</b> ${p.status||'unknown'}</div>`);
         }
       }).addTo(map);
-      b.textContent='Hide gas pipelines';
+      b.textContent = fromCache ? `Hide gas pipelines (cached ${cacheAgeLabel(savedAt)}, live source unavailable)` : 'Hide gas pipelines';
     }).catch(err=>{
       console.warn('Gas pipeline layer unavailable:', err);
       b.textContent='Gas pipelines unavailable (see console)';
