@@ -90,7 +90,10 @@ Completion date, Tenant, Source. Every field always renders; missing data shows 
 something wasn't recorded versus doesn't apply. Tariff/Completion date/Tenant were researched
 and filled in for the handful of best-documented projects; everywhere else, "Not publicly
 disclosed" / "Not yet announced" is used rather than a guess. Notes fields are capped at 70
-words and other popup table fields at 40 words, to keep popups from growing too tall.
+words. Every other popup field (Size, Developer, Planning & zoning, Utility status, Tariff,
+Completion date, Tenant, Duration) is capped at one sentence, 20 words or fewer. When something
+important doesn't fit in that space, it goes in Notes instead, not into the field itself. The
+idea: fields stay scannable, and anyone who wants more detail can check the source link.
 
 ## Color palette
 Regulation types use the colorblind-safe Okabe-Ito palette (blue/teal/olive/crimson). Every
