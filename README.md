@@ -148,8 +148,8 @@ in place for that, currently inert:
   ```json
   {
     "regulations": [ { "county": "...", "city": "...", "level": "County|City",
-      "type": "Moratorium|Ordinance|Pending/Proposed|Other", "period": "...",
-      "expiration": "M/D/YY", "link": "...", "notes": "...", "lat": 0.0, "lng": 0.0 } ],
+      "type": "Moratorium|Ordinance|Pending/Proposed", "period": "...",
+      "expiration": "M/D/YY", "links": ["..."], "notes": "...", "lat": 0.0, "lng": 0.0 } ],
     "projects": [ { "name": "...", "city": "...", "county": "...", "size": "...",
       "developer": "...", "pz": "...", "utility": "...", "links": ["..."], "notes": "...",
       "stage": "Rumored|Proposed|Operating", "countyWide": false, "lat": 0.0, "lng": 0.0,
