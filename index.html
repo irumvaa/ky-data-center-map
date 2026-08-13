@@ -216,12 +216,16 @@ let allCounties=[...new Set(countyGeo.features.map(f=>f.properties.NAME))].sort(
 // by default) with a distinct marker, rather than mixed into the main
 // `projects` array, so it's clearly a different kind of data: a general
 // directory listing, not a vetted, sourced community/regulatory story.
-// Only Louisville-market listings so far (24 of the state's 56 total) —
-// datacentermap.com's per-page view limit blocked fetching the other 11
-// markets. The 4 facilities that duplicate already-tracked projects
-// (TeraWulf/Hawesville, Carrollton/PowerHouse, Camp Ground Road/
-// PowerHouse's 7 building sub-listings, and Project Lincoln) are
-// excluded here since they're already represented properly above.
+// Covers all 12 Kentucky markets datacentermap.com lists, gathered via
+// search (its site-wide page view limit blocked direct page fetches for
+// most of the session). A handful of listings duplicate already-tracked
+// projects (TeraWulf/Hawesville, Carrollton/PowerHouse, Camp Ground
+// Road/PowerHouse's 7 building sub-listings, Project Lincoln, both
+// Calvert City facilities, Riot Platforms Paducah, and DartPoints
+// Lexington/LexMark) and are excluded here since they're already
+// represented properly above. Some Louisville/Lexington/Florence
+// coordinates are city-level with manual jitter, not individually
+// geocoded per street address, see README for the precision caveat.
 let otherDataCenters = [
   {name:"Flexential Louisville, Downtown", operator:"Flexential", address:"752 Barret Avenue, Louisville, KY 40204", lat:38.2447, lng:-85.7391, link:"https://www.datacentermap.com/usa/kentucky/louisville/flexential-louisville-downtown/"},
   {name:"Flexential Louisville, East", operator:"Flexential", address:"2101 Nelson Miller Parkway, Louisville, KY 40223", lat:38.2478, lng:-85.5691, link:"https://www.datacentermap.com/usa/kentucky/louisville/flexential-louisville/"},
@@ -236,6 +240,17 @@ let otherDataCenters = [
   {name:"Silica Broadband", operator:"Davey Holdings LLC", address:"12935 W U.S. Hwy 42, Prospect, KY 40059", lat:38.34694, lng:-85.61028, link:"https://www.datacentermap.com/usa/kentucky/louisville/davey-holdings/"},
   {name:"Lumen Louisville 1", operator:"Lumen", address:"848 S. 8th Street, Louisville, KY 40203", lat:38.2482, lng:-85.7612, link:"https://www.datacentermap.com/usa/kentucky/louisville/level3-louisville/"},
   {name:"Data Canopy, Louisville", operator:"Data Canopy", address:"1208 Quality Choice Pl, Louisville, KY 40202", lat:38.2551, lng:-85.7523, link:"https://www.datacentermap.com/usa/kentucky/louisville/hosting-louisville/"},
+  {name:"Quad State Internet PAH1 Data Center", operator:"Quad State Internet", address:"Paducah, KY 42001", lat:37.0834, lng:-88.6001, link:"https://www.datacentermap.com/usa/kentucky/paducah/quad-state-internet-data-center/"},
+  {name:"Lost River Data Center (LRDC)", operator:"BGMU Fiber / Western Kentucky University", address:"Bowling Green, KY (WKU Center for Research and Development)", lat:36.98167, lng:-86.44444, link:"https://www.datacentermap.com/usa/kentucky/bowling-green/"},
+  {name:"Ashland Technology Complex and Data Center", operator:"ATCDC", address:"500 Diederich Blvd, Russell, KY 41169", lat:38.51806, lng:-82.69778, link:"https://www.datacentermap.com/usa/kentucky/ashland/atcdc_tenants.html"},
+  {name:"CBTS Florence", operator:"CBTS", address:"987 Central Blvd, Florence, KY 41042", lat:38.99139, lng:-84.64611, link:"https://www.datacentermap.com/usa/kentucky/florence-ky/"},
+  {name:"CyrusOne Florence", operator:"CyrusOne", address:"Florence, KY 41042", lat:38.9944, lng:-84.6398, link:"https://www.datacentermap.com/usa/kentucky/florence-ky/"},
+  {name:"EnergyNet Data Center", operator:"EnergyNet", address:"1820 E. 9th Street, Hopkinsville, KY 42240", lat:36.85472, lng:-87.48889, link:"https://www.datacentermap.com/usa/kentucky/hopkinsville/"},
+  {name:"East Kentucky Network Data Center", operator:"East Kentucky Network", address:"101 Technology Trail, Ivel, KY 41642", lat:37.59111, lng:-82.66833, link:"https://www.datacentermap.com/usa/kentucky/ivel/east-kentucky-network-data-center/"},
+  {name:"SUBTAC", operator:"SUBTAC", address:"Lexington, KY (underground facility)", lat:38.0356, lng:-84.4989, link:"https://www.datacentermap.com/usa/kentucky/lexington/"},
+  {name:"Windstream Lexington", operator:"Windstream", address:"Lexington, KY", lat:38.0468, lng:-84.5102, link:"https://www.datacentermap.com/usa/kentucky/lexington/"},
+  {name:"BluegrassNet Downtown Lexington", operator:"BluegrassNet", address:"Lexington, KY", lat:38.0512, lng:-84.4967, link:"https://www.datacentermap.com/usa/kentucky/lexington/"},
+  {name:"QX.net Colocation", operator:"QX.net", address:"333 W Vine St, Lexington, KY 40507", lat:38.0451, lng:-84.5054, link:"https://www.datacentermap.com/usa/kentucky/lexington/"},
 ];
 function otherDCPopup(d){
   return `<div class="pop"><div class="pop-name">${d.name}</div><table class="pop-table">`
