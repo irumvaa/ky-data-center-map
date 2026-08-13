@@ -20,8 +20,9 @@ regenerate the embedded `regulations` and `projects` data and rebuild `index.htm
 Claude to do that from the current tracking sheets, the same way this version was built).
 
 ## Regulation categories
-Moratorium, Ordinance, Pending/Proposed, Other (per supervisor direction — "Ban" was dropped as
-a category since no real entries used it). County shading has four states:
+Moratorium, Ordinance, Pending/Proposed (per supervisor direction — "Ban" was dropped as a category
+since no real entries used it; "Other" was later removed too, since it was redundant with the gray
+"no known regulation" state — see the data convention note below). County shading has four states:
 - **Colored by type** — an actual county-wide regulation
 - **Diagonal stripes** (type color + amber) — the county has BOTH a county-wide regulation AND
   a separate city-level one inside it. A solid fill would hide one of those two facts, so this
@@ -29,6 +30,10 @@ a category since no real entries used it). County shading has four states:
   correctly if one ever does.
 - **Amber** — at least one city inside the county has a regulation, but the county itself doesn't
 - **Gray** — nothing on file at any level
+
+**Data convention**: if a county appears on the tracking spreadsheet with no other information filled
+in, that means there's no data yet — it should not be entered as a regulation record at all. An
+"empty" entry and "not on the sheet" should look identical on the map: gray, "no known regulation."
 
 **Moratoria fall off the map automatically once they expire.** Each regulation's `expiration`
 field (format `M/D/YY`) is checked against today's real date at page load; expired moratoria are
