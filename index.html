@@ -666,6 +666,7 @@ function toggleOtherDC(){
   document.getElementById('btn-other-dc').classList.toggle('active', showOtherDC);
   renderOtherDataCenters();
   updateStatsBar();
+  updateCount();
 }
 
 function renderRegulations(){
@@ -707,7 +708,11 @@ function updateCount(){
     if(stageFilters.size>0 && !stageFilters.has(p.stage)) return false;
     return true;
   }).length : 0;
-  document.getElementById('count').textContent = shown + ' project' + (shown!==1?'s':'') + ' shown' + (selectedCounty? ' in '+selectedCounty+' County':'');
+  const dcShown = showOtherDC ? otherDataCenters.length : 0;
+  const parts = [];
+  parts.push(shown + ' project' + (shown!==1?'s':''));
+  if(showOtherDC) parts.push(dcShown + ' facilit' + (dcShown!==1?'ies':'y') + ' (datacentermap.com)');
+  document.getElementById('count').textContent = parts.join(' + ') + ' shown' + (selectedCounty? ' in '+selectedCounty+' County':'');
 }
 
 function renderAll(){
