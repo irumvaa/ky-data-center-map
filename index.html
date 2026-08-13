@@ -505,7 +505,7 @@ function showCountyPopup(f, latlng){
   const reg = f.properties.reg;
   if(f.properties.both_levels && reg){
     const cityRegs = regulations.filter(r=>normKey(r.level)==='city' && normKey(r.county)===normKey(f.properties.NAME));
-    const list = cityRegs.map(r=>`<li>${r.city} — ${r.type}</li>`).join('');
+    const list = cityRegs.map(r=>`<li>${r.city} — ${r.type}${r.period ? ' ('+r.period+')' : ''}</li>`).join('');
     let html = regulationPopup(reg);
     html = html.replace('</div>', `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ddd;font-size:12px;">Also has separate city-level regulation(s) in this county:<ul style="margin:6px 0 0 16px;">${list}</ul></div></div>`);
     L.popup({maxWidth:300}).setLatLng(latlng).setContent(html).openOn(map);
@@ -513,7 +513,7 @@ function showCountyPopup(f, latlng){
     L.popup({maxWidth:280}).setLatLng(latlng).setContent(regulationPopup(reg)).openOn(map);
   } else if(f.properties.city_only){
     const cityRegs = regulations.filter(r=>normKey(r.level)==='city' && normKey(r.county)===normKey(f.properties.NAME));
-    const list = cityRegs.map(r=>`<li>${r.city} — ${r.type}</li>`).join('');
+    const list = cityRegs.map(r=>`<li>${r.city} — ${r.type}${r.period ? ' ('+r.period+')' : ''}</li>`).join('');
     L.popup({maxWidth:280}).setLatLng(latlng)
       .setContent(`<div class="pop"><div class="pop-name">${f.properties.NAME} County</div>No county-wide regulation. City-level regulation(s) inside this county:<ul style="margin:6px 0 0 16px;font-size:12px;">${list}</ul></div>`)
       .openOn(map);
