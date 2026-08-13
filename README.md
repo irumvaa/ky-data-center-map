@@ -103,6 +103,19 @@ See git history for the specific fixes made (e.g. Operating was originally green
 close to Ordinance's teal; project stage colors were originally three shades of purple, which
 read as near-identical from a distance).
 
+## General colocation/hosting listing (toggleable layer, off by default)
+"DC from datacentermap.com" shows 13 facilities pulled from datacentermap.com's Louisville
+market page, ordinary commercial colocation/hosting providers (Flexential, Lumen, Cogent,
+BluegrassNet, etc.), not the tracked hyperscale/AI projects this map otherwise covers. Rendered
+as a distinct gray square marker so they're never confused with the teardrop project pins.
+Coordinates are approximate (city-level with manual jitter, not geocoded per street address)
+except where a facility's exact address was independently verified. Only Louisville's 24
+listings have been pulled so far, the other 11 Kentucky markets (Paducah, Lexington, Calvert
+City, Ashland, Florence, Bowling Green, Maysville, Cave City, Hopkinsville, Ivel, Harrodsburg,
+32 more listings total) haven't been fetched yet, datacentermap.com's page-view limit blocked
+further requests mid-session. 4 Louisville listings that duplicate already-tracked projects
+(TeraWulf/Hawesville, Carrollton/PowerHouse, Camp Ground Road, Project Lincoln) were excluded.
+
 ## Transmission lines & gas pipelines (toggleable layers, off by default)
 - **Transmission lines**: HIFLD's Electric Power Transmission Lines dataset, sourced via an
   Esri-hosted (`services2.arcgis.com`) copy rather than a single government agency's own server,
