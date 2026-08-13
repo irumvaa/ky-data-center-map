@@ -280,29 +280,74 @@ computeRegStats();
 // "moratorium" even though those aren't the record's primary display
 // name.
 let countyContentBlob = {};
+// Normalize units and common domain synonyms so "500mw", "500 MW", and
+// "500-MW" all match the same way, and "gigawatt"/"megawatt" match "GW"/"MW".
+// Applied to both indexed text and the user's query, so they stay comparable.
+function normalizeSearchText(str){
+  return String(str||'')
+    .toLowerCase()
+    .replace(/megawatts?/g, 'mw')
+    .replace(/gigawatts?/g, 'gw')
+    .replace(/kilowatts?/g, 'kw')
+    .replace(/(\d)\s*-?\s*(mw|gw|kw)\b/g, '$1$2'); // "500 MW" / "500-MW" -> "500mw"
+}
+
+// Small Levenshtein distance implementation (no dependency) for typo
+// tolerance — e.g. "Terawlf" or "morotorium" should still find real matches.
+function editDistance(a, b){
+  const m=a.length, n=b.length;
+  if(Math.abs(m-n) > 2) return 99; // quick reject, keeps this cheap
+  const dp = Array.from({length:m+1}, (_,i)=>[i, ...Array(n).fill(0)]);
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+// Exact substring match first (fast path, no false positives). Only if that
+// fails, and the term is long enough to make typos meaningful, fall back to
+// fuzzy word-level matching against the blob's own words.
+function fuzzyIncludes(blob, term){
+  if(blob.includes(term)) return true;
+  if(term.length < 5) return false; // short words (4 chars) collide too easily — "pipe" vs "pike"
+  const maxDist = term.length >= 7 ? 2 : 1;
+  const words = blob.split(/[^a-z0-9]+/).filter(w=>w.length>=5);
+  return words.some(w => Math.abs(w.length-term.length)<=maxDist && editDistance(term,w)<=maxDist);
+}
+
 function buildSearchIndex(){
   projects.forEach(p=>{
-    p._blob = [p.name,p.city,p.county,p.developer,p.stage,p.size,p.tenant,
+    p._blob = normalizeSearchText([p.name,p.city,p.county,p.developer,p.stage,p.size,p.tenant,
                p.notes,p.pz,p.utility,expandUtilityStatus(p.utility),p.tariff,p.completionDate]
-              .filter(Boolean).join(' ').toLowerCase();
+              .filter(Boolean).join(' '));
   });
   regulations.forEach(r=>{
-    r._blob = [r.county,r.city,r.type,r.notes,r.period,r.level]
-              .filter(Boolean).join(' ').toLowerCase();
+    r._blob = normalizeSearchText([r.county,r.city,r.type,r.notes,r.period,r.level]
+              .filter(Boolean).join(' '));
   });
   // Per-county blob: lets a plain county-name search also surface counties
-  // whose *regulation content* (type, notes) matches the query, not just
-  // counties whose name starts with it.
+  // whose *regulation or project content* (type, developer, notes, etc.)
+  // matches the query, not just counties whose name starts with it. Pulls
+  // from both regulations AND projects tied to that county — previously
+  // this only looked at regulations, so e.g. "McCracken" typed with a
+  // stray space wouldn't surface the county even though a project there
+  // clearly matched.
   countyContentBlob = {};
   regulations.forEach(r=>{
     const key = normKey(r.county);
     countyContentBlob[key] = (countyContentBlob[key] || '') + ' ' + r._blob;
   });
+  projects.forEach(p=>{
+    const key = normKey(p.county);
+    countyContentBlob[key] = (countyContentBlob[key] || '') + ' ' + p._blob;
+  });
 }
 buildSearchIndex();
 
-function searchTerms(q){ return q.split(/\s+/).filter(Boolean); }
-function blobMatchesAll(blob, terms){ return terms.every(t=>blob.includes(t)); }
+function searchTerms(q){ return normalizeSearchText(q).split(/\s+/).filter(Boolean); }
+function blobMatchesAll(blob, terms){ return terms.every(t=>fuzzyIncludes(blob, t)); }
 
 function updateStatsBar(){
   document.getElementById('stat-reg-counties').textContent = regCountiesSet.size;
