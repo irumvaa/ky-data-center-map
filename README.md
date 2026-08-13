@@ -35,6 +35,11 @@ since no real entries used it; "Other" was later removed too, since it was redun
 in, that means there's no data yet — it should not be entered as a regulation record at all. An
 "empty" entry and "not on the sheet" should look identical on the map: gray, "no known regulation."
 
+**Duration convention**: when a regulation's known duration (e.g. "1 year") doesn't come with an
+actual start or end date, just record the plain duration — "1 year", "2 years", "180 days" — rather
+than restating it as a formula ("12 months from the effective date"). Keeps entries consistent, and
+it's honest about what's actually known: a length of time, not a calendar date.
+
 **Moratoria fall off the map automatically once they expire.** Each regulation's `expiration`
 field (format `M/D/YY`) is checked against today's real date at page load; expired moratoria are
 removed from the active dataset entirely before anything renders, so the county reverts to
