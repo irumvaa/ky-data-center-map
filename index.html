@@ -63,6 +63,8 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .pill .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .pill-pin{display:inline-flex;align-items:center;width:12px;height:15px;flex-shrink:0;}
 .pill-pin svg{width:100%;height:100%;display:block;}
+.pill-pin-square{display:inline-flex;align-items:center;width:13px;height:13px;flex-shrink:0;}
+.pill-pin-square svg{width:100%;height:100%;display:block;}
 .divider{width:1px;height:20px;background:#e2e0db;margin:0 2px;flex-shrink:0}
 .badge-count{margin-left:auto;font-size:12px;color:#666;background:#f0efe9;padding:4px 12px;border-radius:20px;white-space:nowrap}
 #map{width:100%;height:calc(100vh - 260px);min-height:360px}
@@ -153,7 +155,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <button class="pill" id="btn-stage-rumored" onclick="toggleStage('Rumored')"><span class="pill-pin" id="pin-rumored"></span>Rumored</button>
   <button class="pill" id="btn-stage-proposed" onclick="toggleStage('Proposed')"><span class="pill-pin" id="pin-proposed"></span>Proposed</button>
   <button class="pill" id="btn-stage-operating" onclick="toggleStage('Operating')"><span class="pill-pin" id="pin-operating"></span>Operating</button>
-  <button class="pill" id="btn-other-dc" onclick="toggleOtherDC()">DC from datacentermap.com</button>
+  <button class="pill" id="btn-other-dc" onclick="toggleOtherDC()"><span class="pill-pin-square" id="pin-other-dc"></span>DC from datacentermap.com</button>
   <div class="divider"></div>
   <span class="ctrl-label">Layers:</span>
   <button class="pill" id="btn-transmission" onclick="toggleTransmission()">Show transmission lines</button>
@@ -640,14 +642,16 @@ function projectIcon(p){
 // Distinct square/chip marker for the general datacentermap.com directory
 // layer — deliberately different from the teardrop project pins so it
 // reads as "reference data," not a tracked, sourced community story.
-function otherDCIcon(){
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
+function otherDCIconSvg(){
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
     <rect x="1" y="1" width="16" height="16" rx="3" fill="#64748B" stroke="#2b2b2b" stroke-width="1.2"/>
     <rect x="5" y="4.5" width="8" height="9" rx="1" fill="none" stroke="white" stroke-width="1.1"/>
     <line x1="5" y1="7.5" x2="13" y2="7.5" stroke="white" stroke-width="0.9"/>
     <line x1="5" y1="10.5" x2="13" y2="10.5" stroke="white" stroke-width="0.9"/>
   </svg>`;
-  return L.divIcon({className:'', html:svg, iconSize:[18,18], iconAnchor:[9,9], popupAnchor:[0,-11]});
+}
+function otherDCIcon(){
+  return L.divIcon({className:'', html:otherDCIconSvg(), iconSize:[18,18], iconAnchor:[9,9], popupAnchor:[0,-11]});
 }
 function renderOtherDataCenters(){
   if(otherDCLayer) map.removeLayer(otherDCLayer);
@@ -1004,6 +1008,7 @@ renderAll();
 document.getElementById('pin-rumored').innerHTML = projectIconSvg('#16A34A', false);
 document.getElementById('pin-proposed').innerHTML = projectIconSvg('#4338CA', false);
 document.getElementById('pin-operating').innerHTML = projectIconSvg('#D1239D', false);
+document.getElementById('pin-other-dc').innerHTML = otherDCIconSvg();
 
 // If a Google Apps Script endpoint is ever configured above
 // (DATA_SOURCE_URL), quietly try to fetch fresher, already-reviewed
