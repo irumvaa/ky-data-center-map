@@ -89,7 +89,7 @@ Completion date, Tenant, Source. Every field always renders; missing data shows 
 "Not available" (styled distinctly) rather than the row disappearing, so it's clear whether
 something wasn't recorded versus doesn't apply. Tariff/Completion date/Tenant were researched
 and filled in for the handful of best-documented projects; everywhere else, "Not publicly
-disclosed" / "Not yet announced" is used rather than a guess. Notes fields are capped at 130
+disclosed" / "Not yet announced" is used rather than a guess. Notes fields are capped at 70
 words and other popup table fields at 40 words, to keep popups from growing too tall.
 
 ## Color palette
