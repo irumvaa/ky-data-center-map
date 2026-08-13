@@ -733,7 +733,7 @@ function selectCounty(name){
     const layer=L.geoJSON(feature);
     map.fitBounds(layer.getBounds(),{padding:[30,30]});
     if(countyHighlightLayer) map.removeLayer(countyHighlightLayer);
-    countyHighlightLayer = L.geoJSON(feature,{style:{color:'#7d3c98',weight:3,fillColor:'#a569bd',fillOpacity:0.15}}).addTo(map);
+    countyHighlightLayer = L.geoJSON(feature,{style:{color:'#7d3c98',weight:3,fillColor:'#a569bd',fillOpacity:0.15}, interactive:false}).addTo(map);
     showCountyPopup(feature, layer.getBounds().getCenter());
   }
   renderProjects();
