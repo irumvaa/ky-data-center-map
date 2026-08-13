@@ -140,8 +140,16 @@ DartPoints Lexington/LexMark, TeraWulf Muskie/Ashland) were excluded.
 - **Gas pipelines**: EIA's natural gas transmission pipeline dataset, hosted via US DOT/BTS.
   This one is a static snapshot from **January 2020**, over six years old. No fresher
   Esri-hosted equivalent was found when checked.
-- Both layers fail visibly (button text changes to "...unavailable") rather than silently, if the
-  underlying government service is down or blocks the request.
+- **Both layers always check the live source first**, every time the toggle is clicked, so
+  updates to either government dataset show up automatically with no code changes needed here.
+  If the live fetch fails (source down, moved, or its structure changed), the map falls back to
+  the last successfully fetched copy, cached in the visitor's browser via `localStorage`, and
+  the button label says so ("cached 3 days ago, live source unavailable") rather than silently
+  showing stale data as if it were current. Only shows "...unavailable" when there's truly
+  nothing to fall back on, e.g. the very first time anyone loads the map after the source goes
+  down. This fetch-with-cache-fallback pattern is deliberately not used for the
+  datacentermap.com directory layer below, since that source isn't a public API meant for
+  repeated automated access the way these two are (see that section for why).
 
 ## Known limitations
 - **Two placeholder links need to be filled in**: the "share new information" and "report a
