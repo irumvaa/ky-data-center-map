@@ -104,17 +104,18 @@ close to Ordinance's teal; project stage colors were originally three shades of 
 read as near-identical from a distance).
 
 ## General colocation/hosting listing (toggleable layer, off by default)
-"DC from datacentermap.com" shows 13 facilities pulled from datacentermap.com's Louisville
-market page, ordinary commercial colocation/hosting providers (Flexential, Lumen, Cogent,
-BluegrassNet, etc.), not the tracked hyperscale/AI projects this map otherwise covers. Rendered
-as a distinct gray square marker so they're never confused with the teardrop project pins.
-Coordinates are approximate (city-level with manual jitter, not geocoded per street address)
-except where a facility's exact address was independently verified. Only Louisville's 24
-listings have been pulled so far, the other 11 Kentucky markets (Paducah, Lexington, Calvert
-City, Ashland, Florence, Bowling Green, Maysville, Cave City, Hopkinsville, Ivel, Harrodsburg,
-32 more listings total) haven't been fetched yet, datacentermap.com's page-view limit blocked
-further requests mid-session. 4 Louisville listings that duplicate already-tracked projects
-(TeraWulf/Hawesville, Carrollton/PowerHouse, Camp Ground Road, Project Lincoln) were excluded.
+"DC from datacentermap.com" shows 24 facilities pulled from all 12 of datacentermap.com's
+Kentucky markets, ordinary commercial colocation/hosting providers (Flexential, Lumen, Cogent,
+BluegrassNet, CBTS, CyrusOne, etc.), not the tracked hyperscale/AI projects this map otherwise
+covers. Rendered as a distinct gray square marker so they're never confused with the teardrop
+project pins. Coordinates are approximate for facilities without a specific address (city-level
+with manual jitter), exact where a street address was independently verified. Two markets
+(Maysville, Harrodsburg) and Cave City's single listing couldn't be reached in enough detail to
+include, datacentermap.com's page-view limit blocked most direct page fetches, and search
+snippets for those three didn't surface usable facility names/addresses. 7 listings that
+duplicate already-tracked projects (TeraWulf/Hawesville, Carrollton/PowerHouse, Camp Ground
+Road, Project Lincoln, both Calvert City facilities, Riot Platforms Paducah, DartPoints
+Lexington/LexMark) were excluded.
 
 ## Transmission lines & gas pipelines (toggleable layers, off by default)
 - **Transmission lines**: HIFLD's Electric Power Transmission Lines dataset, sourced via an
