@@ -104,18 +104,24 @@ close to Ordinance's teal; project stage colors were originally three shades of 
 read as near-identical from a distance).
 
 ## General colocation/hosting listing (toggleable layer, off by default)
-"DC from datacentermap.com" shows 24 facilities pulled from all 12 of datacentermap.com's
+"DC from datacentermap.com" shows 25 facilities pulled from all 12 of datacentermap.com's
 Kentucky markets, ordinary commercial colocation/hosting providers (Flexential, Lumen, Cogent,
 BluegrassNet, CBTS, CyrusOne, etc.), not the tracked hyperscale/AI projects this map otherwise
-covers. Rendered as a distinct gray square marker so they're never confused with the teardrop
-project pins. Coordinates are approximate for facilities without a specific address (city-level
-with manual jitter), exact where a street address was independently verified. Two markets
-(Maysville, Harrodsburg) and Cave City's single listing couldn't be reached in enough detail to
-include, datacentermap.com's page-view limit blocked most direct page fetches, and search
-snippets for those three didn't surface usable facility names/addresses. 7 listings that
-duplicate already-tracked projects (TeraWulf/Hawesville, Carrollton/PowerHouse, Camp Ground
-Road, Project Lincoln, both Calvert City facilities, Riot Platforms Paducah, DartPoints
-Lexington/LexMark) were excluded.
+covers. Popups show Operator, Developer, Status, Size/Capacity, Address, and a source link.
+Rendered as a distinct gray square marker so they're never confused with the teardrop project
+pins. Coordinates are approximate for facilities without a specific address (city-level with
+manual jitter), exact where a street address was confirmed. Cross-checked against a manually
+researched spreadsheet, which caught a real error (an entry called "SUBTAC" was actually a
+different facility, KUSI Data Center, in Wilmore/Jessamine County, not Lexington/Fayette as
+originally listed) and added one facility (Gearheart Communications, Lexington) not previously
+found. Maysville, Harrodsburg, and Cave City's single listing still aren't included,
+datacentermap.com's page-view limit blocked enough direct access to confirm real facility
+names/addresses for those three; adding them from the spreadsheet risked pulling in listings
+that actually duplicate already-tracked projects there (Mason County Campus, Project Bluegrass,
+and 2001 Doyle Avenue all turned out to be the same real projects already on the main map).
+9 listings that duplicate already-tracked projects (TeraWulf/Hawesville, Carrollton/PowerHouse,
+Camp Ground Road, Project Lincoln, both Calvert City facilities, Riot Platforms Paducah,
+DartPoints Lexington/LexMark, TeraWulf Muskie/Ashland) were excluded.
 
 ## Transmission lines & gas pipelines (toggleable layers, off by default)
 - **Transmission lines**: HIFLD's Electric Power Transmission Lines dataset, sourced via an
