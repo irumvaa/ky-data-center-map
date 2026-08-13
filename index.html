@@ -453,29 +453,32 @@ function countyTooltip_(f){
   }
   return `<strong>${f.properties.NAME} County</strong><br>${status}`;
 }
+function showCountyPopup(f, latlng){
+  const reg = f.properties.reg;
+  if(f.properties.both_levels && reg){
+    const cityRegs = regulations.filter(r=>normKey(r.level)==='city' && normKey(r.county)===normKey(f.properties.NAME));
+    const list = cityRegs.map(r=>`<li>${r.city} — ${r.type}</li>`).join('');
+    let html = regulationPopup(reg);
+    html = html.replace('</div>', `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ddd;font-size:12px;">Also has separate city-level regulation(s) in this county:<ul style="margin:6px 0 0 16px;">${list}</ul></div></div>`);
+    L.popup({maxWidth:300}).setLatLng(latlng).setContent(html).openOn(map);
+  } else if(reg){
+    L.popup({maxWidth:280}).setLatLng(latlng).setContent(regulationPopup(reg)).openOn(map);
+  } else if(f.properties.city_only){
+    const cityRegs = regulations.filter(r=>normKey(r.level)==='city' && normKey(r.county)===normKey(f.properties.NAME));
+    const list = cityRegs.map(r=>`<li>${r.city} — ${r.type}</li>`).join('');
+    L.popup({maxWidth:280}).setLatLng(latlng)
+      .setContent(`<div class="pop"><div class="pop-name">${f.properties.NAME} County</div>No county-wide regulation. City-level regulation(s) inside this county:<ul style="margin:6px 0 0 16px;font-size:12px;">${list}</ul></div>`)
+      .openOn(map);
+  } else {
+    L.popup({maxWidth:280}).setLatLng(latlng).setContent(countyNoRegPopup(f.properties.NAME)).openOn(map);
+  }
+}
 const countyLayer = L.geoJSON(countyGeo,{
   style: countyStyle_,
   onEachFeature: (f,layer)=>{
     layer.bindTooltip(countyTooltip_(f),{sticky:true});
     layer.on('click', ()=>{
-      const reg = f.properties.reg;
-      if(f.properties.both_levels && reg){
-        const cityRegs = regulations.filter(r=>normKey(r.level)==='city' && normKey(r.county)===normKey(f.properties.NAME));
-        const list = cityRegs.map(r=>`<li>${r.city} — ${r.type}</li>`).join('');
-        let html = regulationPopup(reg);
-        html = html.replace('</div>', `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ddd;font-size:12px;">Also has separate city-level regulation(s) in this county:<ul style="margin:6px 0 0 16px;">${list}</ul></div></div>`);
-        L.popup({maxWidth:300}).setLatLng(layer.getBounds().getCenter()).setContent(html).openOn(map);
-      } else if(reg){
-        L.popup({maxWidth:280}).setLatLng(layer.getBounds().getCenter()).setContent(regulationPopup(reg)).openOn(map);
-      } else if(f.properties.city_only){
-        const cityRegs = regulations.filter(r=>normKey(r.level)==='city' && normKey(r.county)===normKey(f.properties.NAME));
-        const list = cityRegs.map(r=>`<li>${r.city} — ${r.type}</li>`).join('');
-        L.popup({maxWidth:280}).setLatLng(layer.getBounds().getCenter())
-          .setContent(`<div class="pop"><div class="pop-name">${f.properties.NAME} County</div>No county-wide regulation. City-level regulation(s) inside this county:<ul style="margin:6px 0 0 16px;font-size:12px;">${list}</ul></div>`)
-          .openOn(map);
-      } else {
-        L.popup({maxWidth:280}).setLatLng(layer.getBounds().getCenter()).setContent(countyNoRegPopup(f.properties.NAME)).openOn(map);
-      }
+      showCountyPopup(f, layer.getBounds().getCenter());
     });
   }
 }).addTo(map);
@@ -731,6 +734,7 @@ function selectCounty(name){
     map.fitBounds(layer.getBounds(),{padding:[30,30]});
     if(countyHighlightLayer) map.removeLayer(countyHighlightLayer);
     countyHighlightLayer = L.geoJSON(feature,{style:{color:'#7d3c98',weight:3,fillColor:'#a569bd',fillOpacity:0.15}}).addTo(map);
+    showCountyPopup(feature, layer.getBounds().getCenter());
   }
   renderProjects();
 }
