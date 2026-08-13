@@ -129,6 +129,14 @@ distinction) since that's what the original source data had — left as-is rathe
 at, but the acronym itself is spelled out in the popup and searchable either way (e.g. searching
 "transmission service request" finds them).
 
+**This field is for status only — never a utility company name.** That distinction got blurred
+for a while (several entries had things like "Owen Electric Cooperative" or "LG&E/KU" sitting in
+Utility status), which doesn't fit the TSR/ESA convention above and isn't actually a status. The
+utility's name belongs in the Tariff field instead, since tariffs are utility-specific anyway
+(e.g. "Owen Electric Cooperative service territory... EHLF tariff"). If a project's utility is
+known but its TSR/ESA status isn't, leave Utility status blank ("Not available") rather than
+putting the company name there as a stand-in.
+
 ## Future: live data via Apps Script
 The plan (same pattern as eky-ev-map) is a Google Apps Script Web App sitting in front of the
 tracking sheets, so non-technical people can edit a spreadsheet directly, with a verification/
