@@ -489,12 +489,15 @@ function countyTooltip_(f){
   if(!has){
     status = 'No known regulation';
   } else if(f.properties.both_levels){
-    status = `Has a county-wide regulation (${f.properties.reg.type}) — plus at least one separate city-level regulation inside it`;
+    const reg = f.properties.reg;
+    status = `County-wide: ${reg.type}${reg.period ? ' ('+reg.period+')' : ''} — plus city-level regulation(s) inside`;
   } else if(f.properties.city_only){
-    status = 'No county-wide regulation — but at least one city inside has one';
+    const cityRegs = regulations.filter(r=>normKey(r.level)==='city' && normKey(r.county)===normKey(f.properties.NAME));
+    const list = cityRegs.map(r=>`${r.city}: ${r.type}${r.period ? ' ('+r.period+')' : ''}`).join('; ');
+    status = `No county-wide regulation. ${list}`;
   } else {
-    status = 'Has a county-wide regulation';
-    if(f.properties.reg) status += ` (${f.properties.reg.type})`;
+    const reg = f.properties.reg;
+    status = reg ? `${reg.type}${reg.period ? ' ('+reg.period+')' : ''}` : 'Has a county-wide regulation';
   }
   return `<strong>${f.properties.NAME} County</strong><br>${status}`;
 }
