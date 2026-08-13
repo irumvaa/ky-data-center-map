@@ -414,11 +414,13 @@ function blobMatchesAll(blob, terms){ return terms.every(t=>fuzzyIncludes(blob, 
 function updateStatsBar(){
   document.getElementById('stat-reg-counties').textContent = regCountiesSet.size;
   document.getElementById('stat-no-reg').textContent = allCounties.length - regCountiesSet.size;
-  const total = projects.length + (showOtherDC ? otherDataCenters.length : 0);
+  // Always shows the combined total, independent of whether the datacentermap.com
+  // toggle happens to be on right now — this is a standing count, not tied to
+  // what's currently plotted on screen (that's what the right-side badge is for).
+  const total = projects.length + otherDataCenters.length;
   document.getElementById('stat-projects').textContent = total;
-  document.getElementById('stat-projects-breakdown').textContent = showOtherDC
-    ? ` (${projects.length} tracked + ${otherDataCenters.length} from datacentermap.com)`
-    : '';
+  document.getElementById('stat-projects-breakdown').textContent =
+    ` (${projects.length} tracked + ${otherDataCenters.length} from datacentermap.com)`;
 }
 updateStatsBar();
 
