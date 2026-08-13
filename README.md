@@ -64,6 +64,18 @@ match wasn't on the obvious name field. Multi-word queries require every word to
 somewhere in the record (not necessarily together). Selecting a regulation result zooms straight
 to it and opens its popup, the same way selecting a project does.
 
+Also handles:
+- **Typos** — a Levenshtein-distance fuzzy fallback catches things like "Terawlf" or
+  "morotorium." Only kicks in for terms 5+ characters (shorter words collide too easily —
+  "pipe" was accidentally matching "Pike" County before this limit was added, tested and fixed).
+- **Units** — "500mw", "500 MW", and "500-MW" all match the same way; "megawatt"/"gigawatt"
+  normalize to "mw"/"gw" so they match the abbreviated form actually used in the data.
+- **Plurals** — mostly falls out of the typo tolerance above ("moratoriums" is edit-distance 1
+  from "moratorium").
+- **County search checks project data too** — previously a plain county-name search only looked
+  at regulation records for that county, so a county with only a project (no regulation) and an
+  unusual spelling wouldn't surface. Now it checks both.
+
 ## Popup fields
 Regulations: Location, Type, Duration + Expiration (moratoria only), Source. (No individual
 contact names are stored or shown — removed entirely from data, popups, and search.)
