@@ -666,13 +666,25 @@ function projectIcon(p){
 // "Operational (built 2011)", "Not confirmed in latest source"...), so this
 // matches on keywords rather than an exact enum, with a safe default for
 // anything unrecognized.
-function otherDCStatusColor(status){
+// Single source of truth for classifying the free-text status field —
+// both the marker color and the legend counts derive from this, so they
+// can never drift out of sync the way a separate reverse-color-lookup did.
+function otherDCStatusKey(status){
   const s = (status||'').toLowerCase();
-  if(s.includes('proposed')) return '#2563EB'; // blue
-  if(s.includes('construction')) return '#EA580C'; // orange
-  if(s.includes('unknown') || s.includes('not confirmed')) return '#78716C'; // muted stone, signals uncertainty
-  if(s.includes('operational')) return '#64748B'; // steel gray — the default, most common status
-  return '#64748B'; // fallback for anything unrecognized
+  if(s.includes('proposed')) return 'proposed';
+  if(s.includes('construction')) return 'construction';
+  if(s.includes('unknown') || s.includes('not confirmed')) return 'unknown';
+  if(s.includes('operational')) return 'operational';
+  return 'unknown'; // fallback for anything unrecognized
+}
+const OTHER_DC_STATUS_COLORS = {
+  proposed: '#4338CA',    // indigo, matches project stage "Proposed"
+  construction: '#EA580C', // orange
+  unknown: '#78716C',     // muted stone, signals uncertainty
+  operational: '#D1239D', // magenta, matches project stage "Operating"
+};
+function otherDCStatusColor(status){
+  return OTHER_DC_STATUS_COLORS[otherDCStatusKey(status)];
 }
 function otherDCIconSvg(color){
   const fill = color || '#64748B';
@@ -766,9 +778,8 @@ function updateFilterCounts(){
   document.getElementById('cnt-leg-both').textContent = bothLevelCounties.size;
   document.getElementById('cnt-leg-none').textContent = allCounties.length - regCountiesSet.size;
 
-  const dcColorMap = { '#2563EB':'proposed', '#EA580C':'construction', '#78716C':'unknown', '#64748B':'operational' };
   const dcCounts = { proposed:0, construction:0, unknown:0, operational:0 };
-  otherDataCenters.forEach(d=>{ dcCounts[dcColorMap[otherDCStatusColor(d.status)]]++; });
+  otherDataCenters.forEach(d=>{ dcCounts[otherDCStatusKey(d.status)]++; });
   document.getElementById('cnt-dc-operational').textContent = dcCounts.operational;
   document.getElementById('cnt-dc-proposed').textContent = dcCounts.proposed;
   document.getElementById('cnt-dc-construction').textContent = dcCounts.construction;
