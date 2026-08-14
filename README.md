@@ -1,23 +1,27 @@
 # KY Data Center Map
 
 **Live map: https://irumvaa.github.io/ky-data-center-map/**
+**Help page: https://irumvaa.github.io/ky-data-center-map/help.html**
 
 Interactive map of proposed Kentucky data center projects, local moratoria/ordinances/pending
 legislation, and major transmission lines and gas pipelines. Built in the same branded style as
 the Mountain Association's eky-ev-map: county border shading, a search bar with autocomplete, a
 stats bar, and pill-style filters.
 
-## This map is fully static, no spreadsheet connection at all
-Every regulation and project record is baked directly into `index.html` as plain JavaScript
-objects (`regulations` and `projects`). There is no reference to any spreadsheet URL, sheet ID,
-or API key anywhere in this file, in view-source, or in the page's network traffic. Transmission
-lines and gas pipelines still load live from public third-party government datasets, since
-that's public infrastructure data, not anything from the Mountain Association's internal
-tracking.
+## Live data, with a static fallback
+This map is backed by a Google Sheet through a Google Apps Script Web App (see "Live data via
+Apps Script" below), so non-technical people can add or correct information through a form
+without anyone editing this file directly. Every regulation, project, and datacentermap.com
+facility is *also* baked directly into `index.html` as plain JavaScript objects, this is the
+fallback the map renders immediately on load and falls back to completely if the live source is
+ever unreachable, so a Sheet/Apps Script outage never breaks the public map. Transmission lines
+and gas pipelines still load live from public third-party government datasets, unrelated to the
+Mountain Association's own Sheet.
 
-**Trade-off:** this map will not reflect new spreadsheet edits automatically. To update it,
-regenerate the embedded `regulations` and `projects` data and rebuild `index.html` (or ask
-Claude to do that from the current tracking sheets, the same way this version was built).
+**Trade-off:** the embedded fallback data is a snapshot, not automatically kept in sync with the
+Sheet. If the live pipeline is ever down for a while, the map keeps working but may show slightly
+stale data until the fallback is manually regenerated (ask Claude to pull the current Sheet data
+and rebuild `index.html`'s embedded arrays, the same way this version was built).
 
 ## Regulation categories
 Moratorium, Ordinance, Pending/Proposed (per supervisor direction, "Ban" was dropped as a category
@@ -187,13 +191,9 @@ DartPoints Lexington/LexMark, TeraWulf Muskie/Ashland) were excluded.
   repeated automated access the way these two are (see that section for why).
 
 ## Known limitations
-- **Two placeholder links need to be filled in**: the "share new information" and "report a
-  problem" links in the banner under the header currently point to `#PLACEHOLDER-add-data-form`
-  and `#PLACEHOLDER-report-problem-form`. Search `index.html` for `PLACEHOLDER` to find and
-  replace both once those Google Forms exist. The `energy@mtassociation.org` mailto link is
-  already live.
-- Static snapshot, needs manual regeneration to reflect new spreadsheet entries, Lantern
-  updates, or newer transmission/pipeline data.
+- Embedded fallback data is a snapshot; needs manual regeneration to reflect new Sheet entries,
+  Lantern updates, or newer transmission/pipeline data if the live pipeline is ever down for a
+  while.
 - Gas pipeline data is six-plus years old; treat it as historically informative, not current.
 
 ## Utility status vocabulary
@@ -212,59 +212,100 @@ utility's name belongs in the Tariff field instead, since tariffs are utility-sp
 known but its TSR/ESA status isn't, leave Utility status blank ("Not available") rather than
 putting the company name there as a stand-in.
 
-## Live data via Apps Script
-A Google Apps Script Web App now sits in front of a Google Sheet, so non-technical people can
-add or correct information through a Google Form without anyone editing this file directly. The
-full backend lives in `gas-setup/` in this repo (Code.gs, SetupForm.gs,
-SetupSheetAndMigrateData.gs), see that folder for setup instructions.
+## Live data via Apps Script (Regulations, Projects, DC facilities, and help.html's wording)
+A Google Apps Script Web App sits in front of a Google Sheet. The map renders instantly from
+the data embedded in `index.html` (so it's never blank while waiting on a network request),
+then quietly fetches the live Sheet in the background and swaps in the fresh data if that
+succeeds. If the fetch fails for any reason, the embedded data keeps the map fully working,
+silently, nothing breaks. `help.html`'s wording works the same way, with its own fallback text
+built into the page.
+
+Two separate Google Forms feed the Sheet: **Add new information** (a new Regulation or a new
+Project) and **Report a problem** (a correction to an existing Regulation, Project, or DC
+facility). They're kept separate on purpose, "add something new" and "something's wrong with
+what's already here" are different enough tasks that one long branching form made the first
+question do too much work. Both write into the same Sheet, just different tabs.
 
 **Nothing submitted goes live automatically.** New regulations and projects land in their sheet
 tab marked Status = "Pending Review" (highlighted light yellow), and only appear on the map once
-someone flips that cell to "Published." Reported corrections to existing entries land
-in a separate PendingReview tab for the same reason, applying them means editing the actual row
-by hand once reviewed. Data-validation dropdowns on the Level/Type/Stage/Status columns help
-prevent typos there from silently breaking the map's coloring logic. A "Data Center Map Admin"
-menu inside the Sheet (Review next pending item) walks through pending submissions one at a
-time, showing the real submitted fields and letting you Approve, Reject, or Skip right there,
-so nobody has to scroll hunting for the yellow rows themselves.
+someone flips that cell to "Published." Reported corrections land in a separate PendingReview
+tab instead, since those are proposed edits to already-published rows, not new rows of their
+own; apply them by hand in the relevant tab once reviewed. Data-validation dropdowns on the
+Level/Type/Stage/Status columns help prevent typos there from silently breaking the map's
+coloring logic. A "Data Center Map Admin" menu inside the Sheet (Review next pending item) walks
+through pending submissions one at a time, showing the real submitted fields and letting you
+Approve, Reject, or Skip right there, so nobody has to scroll hunting for the yellow rows
+themselves.
 
-This map's own code already has the fallback-then-live-refresh scaffolding built in:
+**Geocoding**: when a Project submission includes an address or a Google Maps link, the backend
+tries to resolve real coordinates for it (address via Apps Script's built-in geocoder, a Maps
+link by parsing the `@lat,lng` or `q=lat,lng` pattern out of the URL). If neither is given, or
+geocoding fails, it falls back to the submitted county's centroid, the same coordinates the map
+already uses for "county-wide, exact site unknown" projects.
 
-- `DATA_SOURCE_URL` and `FORM_URL` near the top of `index.html` are blank until the Apps Script
-  is deployed. As long as they're blank, the map runs exactly as it does without them: 100% on
-  the embedded data, and the "Add or correct" links inside popups stay hidden rather than
-  pointing nowhere.
-- Once `DATA_SOURCE_URL` is filled in, the map renders instantly from the embedded fallback data
-  (so it's never blank while waiting on a request), then quietly fetches the Apps Script endpoint
-  in the background. If that succeeds, it swaps in the fresh data (regulations, projects, and the
-  datacentermap.com layer all three) and re-renders. If it fails for any reason, the embedded
-  data keeps the map fully working, silently.
-- The Apps Script returns JSON shaped exactly like this:
-  ```json
-  {
-    "regulations": [ { "county": "...", "city": "...", "level": "County|City",
-      "type": "Moratorium|Ordinance|Pending/Proposed", "startDate": "...", "period": "...",
-      "expiration": "M/D/YY", "address": "...", "links": ["..."], "notes": "...",
-      "lat": 0.0, "lng": 0.0 } ],
-    "projects": [ { "name": "...", "city": "...", "county": "...", "address": "...",
-      "size": "...", "developer": "...", "pz": "...", "utility": "...", "links": ["..."],
-      "notes": "...", "stage": "Rumored|Proposed|Operating", "countyWide": false,
-      "lat": 0.0, "lng": 0.0, "tariff": "...", "completionDate": "...", "tenant": "..." } ],
-    "otherDataCenters": [ { "name": "...", "operator": "...", "developer": "...",
-      "status": "...", "size": "...", "address": "...", "city": "...", "county": "...",
-      "lat": 0.0, "lng": 0.0, "link": "..." } ]
-  }
-  ```
-  Same field names as the embedded arrays in `index.html`. That's not a coincidence, the
-  Apps Script reads directly off these names, so this file and that backend can't drift apart.
-- **No `contact` field**: that was removed from this map entirely (data, popups, search) and
-  isn't reintroduced through the live pipeline either. Submitters can optionally leave their own
-  email for follow-up questions, but that stays in the Sheet, it's never published to the map.
-- `lat`/`lng` need to be resolved before they reach the script (geocoded from city/county), the
-  client doesn't do that itself.
-- The client always uses the field values as-is; it does not re-verify anything. All review/
-  approval logic needs to live in the Sheet + Apps Script, not here.
+The full backend lives in `gas-setup/` in this repo:
+- **Code.gs**: the Web App (serves map data and help.html's content as JSON), form-submission
+  handling, geocoding, the admin review menu, and email notifications (a submission confirmation
+  and a moratorium-specific alert on every new regulation submission, plus a daily check that
+  emails when a published moratorium expires).
+- **SetupForm.gs**: run once to programmatically build both Forms (`createAddForm()` and
+  `createReportForm()`), branching logic included, so nobody hand-builds 30+ questions in
+  Google's UI.
+- **SetupSheetAndMigrateData.gs**: run once to create every tab this system needs (Regulations,
+  Projects, DCFacilities, PendingReview, CountyCentroids, HelpContent) with headers and
+  data-validation dropdowns, pre-populated with the map's full current dataset and all 120 KY
+  county centroids. `setupHelpContentTab(ss)` needs an `ss` argument and will error if run
+  directly from the function dropdown; use `setupHelpContentTabOnly()` instead if you only need
+  to (re)build that one tab without touching anything else.
+
+See that folder's file-level comments for full setup steps (creating the Sheet, running the
+setup functions, linking both Forms' responses to it, setting the triggers, deploying). A few
+things worth knowing if you're troubleshooting a deployment:
+- **Updating an existing deployment can silently fail to take effect.** If Deploy → Manage
+  deployments → New version doesn't seem to change what the URL serves even after saving and
+  confirming the code is correct, don't keep retrying the same path, create a genuinely new
+  deployment instead (Deploy → New deployment), which gives a new URL guaranteed to run the
+  current code.
+- **A brand new deployment can 404 immediately after creation** for some external, non-browser
+  fetch tools, even while working correctly for real visitors (confirmed both logged in and in
+  a private/incognito window). If an automated check gets a 404 right after deploying, that
+  doesn't necessarily mean anything is wrong, check it in an actual browser before assuming the
+  deployment is broken.
+- **`SpreadsheetApp.openById()` on a slightly wrong Sheet ID throws "Illegal spreadsheet id or
+  key"** naming the exact bad ID in the error, useful for spotting a copy-paste slip (an extra
+  or missing character) by comparing it directly against the Sheet's real URL.
+
+The Apps Script's `doGet()` returns JSON shaped exactly like this for the main map data:
+```json
+{
+  "regulations": [ { "county": "...", "city": "...", "level": "County|City",
+    "type": "Moratorium|Ordinance|Pending/Proposed", "startDate": "...", "period": "...",
+    "expiration": "M/D/YY", "address": "...", "links": ["..."], "notes": "...",
+    "lat": 0.0, "lng": 0.0 } ],
+  "projects": [ { "name": "...", "city": "...", "county": "...", "address": "...",
+    "size": "...", "developer": "...", "pz": "...", "utility": "...", "links": ["..."],
+    "notes": "...", "stage": "Rumored|Proposed|Operating", "countyWide": false,
+    "lat": 0.0, "lng": 0.0, "tariff": "...", "completionDate": "...", "tenant": "..." } ],
+  "otherDataCenters": [ { "name": "...", "operator": "...", "developer": "...",
+    "status": "...", "size": "...", "address": "...", "city": "...", "county": "...",
+    "lat": 0.0, "lng": 0.0, "link": "..." } ]
+}
+```
+Same field names as the embedded arrays in `index.html`, not a coincidence, the Apps Script
+reads directly off these names, so this file and that backend can't drift apart. With
+`?content=help` appended to the URL, it instead returns a flat `{key: text}` object read from
+the HelpContent sheet tab, which is what `help.html`'s own fetch script consumes.
+
+**No `contact` field**: that was removed from this map entirely (data, popups, search) and isn't
+reintroduced through the live pipeline either. Submitters can optionally leave their own email
+for follow-up questions, but that stays in the Sheet, it's never published to the map.
+
+The client always uses fetched field values as-is; it does not re-verify anything. All review/
+approval logic lives in the Sheet + Apps Script, not in `index.html` or `help.html`.
 
 ## Deploy
 Pushed to GitHub Pages from the `main` branch of this repo, live at the URL at the top of this
-file. No build step; `index.html` is the whole site.
+file. No build step; `index.html` is the whole site. `DATA_SOURCE_URL`, `ADD_FORM_URL`,
+`REPORT_FORM_URL` (in `index.html`) and `HELP_DATA_SOURCE_URL` (in `help.html`) are currently
+set to a live deployment, updating any of them means redeploying the Apps Script and pasting
+the new URL into both files.
