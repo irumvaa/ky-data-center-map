@@ -64,6 +64,8 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .pill-pin{display:inline-flex;align-items:center;width:12px;height:15px;flex-shrink:0;}
 .pill-pin svg{width:100%;height:100%;display:block;}
 .pill-pin-square{display:inline-flex;align-items:center;width:13px;height:13px;flex-shrink:0;}
+.leg-box-icon{display:inline-flex;align-items:center;width:14px;height:14px;flex-shrink:0;}
+.leg-box-icon svg{width:100%;height:100%;display:block;}
 .pill-pin-square svg{width:100%;height:100%;display:block;}
 .divider{width:1px;height:20px;background:#e2e0db;margin:0 2px;flex-shrink:0}
 .badge-count{margin-left:auto;font-size:12px;color:#666;background:#f0efe9;padding:4px 12px;border-radius:20px;white-space:nowrap}
@@ -167,7 +169,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <div class="leg-item"><span class="leg-box" style="background:rgba(230,159,0,0.3);border:1.5px solid #a66d00"></span>City-level only (no county-wide reg)</div>
   <div class="leg-item"><span class="leg-box" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px);border:1.5px solid #555"></span>Both county-wide AND city-level</div>
   <div class="leg-item"><span class="leg-box" style="background:rgba(153,153,153,0.15);border:1.5px solid #7a7a7a"></span>No known regulation</div>
-  <div class="leg-item"><span class="leg-box" style="background:#64748B;border:1.5px solid #2b2b2b;width:12px;height:12px;"></span>datacentermap.com listing</div>
+  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc"></span>datacentermap.com listing</div>
   <div class="leg-item"><span class="leg-line" style="background:#2c3e50"></span>Transmission line</div>
   <div class="leg-item"><span class="leg-line" style="background:repeating-linear-gradient(90deg,#8B5A2B 0 6px,transparent 6px 9px)"></span>Gas pipeline</div>
   <span class="leg-credit">Data: KY DC tracking sheets, Kentucky Lantern, HIFLD (transmission, ~2025) &amp; EIA (pipelines, 2020 snapshot) · Map: OpenStreetMap</span>
@@ -1097,6 +1099,7 @@ document.getElementById('pin-rumored').innerHTML = projectIconSvg('#16A34A', fal
 document.getElementById('pin-proposed').innerHTML = projectIconSvg('#4338CA', false);
 document.getElementById('pin-operating').innerHTML = projectIconSvg('#D1239D', false);
 document.getElementById('pin-other-dc').innerHTML = otherDCIconSvg();
+document.getElementById('leg-other-dc').innerHTML = otherDCIconSvg();
 
 // If a Google Apps Script endpoint is ever configured above
 // (DATA_SOURCE_URL), quietly try to fetch fresher, already-reviewed
