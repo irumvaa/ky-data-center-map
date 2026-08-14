@@ -82,8 +82,8 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .badge{font-size:11px;font-weight:500;padding:2px 9px;border-radius:10px}
 .b-mor{background:#d6e9f5;color:#004d73}
 .b-level{background:#eee;color:#555}
-.b-pending{background:#e8f0da;color:#3d5220}
-.b-ord{background:#d3f0e6;color:#00553d}
+.b-pending{background:#fbe4d5;color:#8a3200}
+.b-ord{background:#ece3fb;color:#4c1d95}
 .b-proposed{background:#e1ddf9;color:#2d2287}
 .b-operating{background:#f9d9ef;color:#8e0a6c}
 .b-rumored{background:#d7f0dd;color:#146c34}
@@ -146,9 +146,9 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 <div class="controls">
   <span class="ctrl-label">Regulation:</span>
   <button class="pill active" id="btn-reg-all" onclick="setRegFilter('all')">All</button>
-  <button class="pill" id="btn-reg-pending" onclick="setRegFilter('pending')"><span class="dot" style="background:#7CB342"></span>Pending/Proposed</button>
+  <button class="pill" id="btn-reg-pending" onclick="setRegFilter('pending')"><span class="dot" style="background:#D55E00"></span>Pending/Proposed</button>
   <button class="pill" id="btn-reg-moratorium" onclick="setRegFilter('moratorium')"><span class="dot" style="background:#0072B2"></span>Moratorium</button>
-  <button class="pill" id="btn-reg-ordinance" onclick="setRegFilter('ordinance')"><span class="dot" style="background:#009E73"></span>Ordinance</button>
+  <button class="pill" id="btn-reg-ordinance" onclick="setRegFilter('ordinance')"><span class="dot" style="background:#8B5CF6"></span>Ordinance</button>
   <div class="divider"></div>
   <span class="ctrl-label">Projects:</span>
   <button class="pill active" id="btn-proj-show" onclick="toggleProjects()">Show projects</button>
@@ -432,8 +432,8 @@ updateStatsBar();
 function regColor(type){
   const t=normKey(type);
   if(t==='moratorium') return '#0072B2'; // blue
-  if(t==='ordinance') return '#009E73'; // teal/green
-  if(t==='pending' || t==='pending or proposed' || t==='pending/proposed') return '#7CB342'; // olive green
+  if(t==='ordinance') return '#8B5CF6'; // violet
+  if(t==='pending' || t==='pending or proposed' || t==='pending/proposed') return '#D55E00'; // vermillion
   return '#999999';
 }
 function regBadgeClass(type){
