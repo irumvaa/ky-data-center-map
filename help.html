@@ -33,9 +33,9 @@ footer{text-align:center;font-size:12px;color:#888;padding:20px}
 
 <h2>What the colors mean</h2>
 <p>County shading shows local regulations:</p>
-<div class="swatch-row"><span class="swatch" style="background:#0072B2"></span> Moratorium</div>
-<div class="swatch-row"><span class="swatch" style="background:#2DD4BF"></span> Ordinance</div>
-<div class="swatch-row"><span class="swatch" style="background:#DC2626"></span> Pending/Proposed legislation</div>
+<div class="swatch-row"><span class="swatch" style="background:#0072B2"></span> Moratorium: a temporary pause on new data center construction</div>
+<div class="swatch-row"><span class="swatch" style="background:#2DD4BF"></span> Ordinance: a permanent zoning rule</div>
+<div class="swatch-row"><span class="swatch" style="background:#DC2626"></span> Pending/Proposed: not yet passed, still under consideration</div>
 <div class="swatch-row"><span class="swatch" style="background:rgba(230,159,0,0.3);border-color:#a66d00"></span> Amber = a city inside has a regulation, but the county doesn't</div>
 <div class="swatch-row"><span class="swatch" style="background:rgba(153,153,153,0.15);border-color:#7a7a7a"></span> Gray = nothing on file at any level</div>
 <div class="swatch-row"><span class="swatch" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px)"></span> Diagonal stripes = both a county-wide and a separate city-level regulation</div>
@@ -49,6 +49,12 @@ footer{text-align:center;font-size:12px;color:#888;padding:20px}
 <div class="card">
 <p><strong>Teardrop pins</strong> mark individual data center projects. A solid pin means the exact site is known. A dashed pin means only the county is known so far, not the specific address.</p>
 <p style="margin-top:10px"><strong>Gray squares</strong> mark listings from the separate "DC from datacentermap.com" layer, described below.</p>
+</div>
+
+<h2>Clicking on the map</h2>
+<div class="card">
+<p>Click any county or pin to open a popup with the full details on file and a link to the source. If a popup is long, it scrolls instead of getting cut off, so there's no hidden information below the fold.</p>
+<p style="margin-top:10px">When a field like Utility status or Tenant says <strong>"Not available"</strong>, that means it genuinely isn't public yet, not that something's missing by mistake. This map doesn't guess or fill in gaps.</p>
 </div>
 
 <h2>About the "DC from datacentermap.com" layer</h2>
@@ -66,7 +72,18 @@ footer{text-align:center;font-size:12px;color:#888;padding:20px}
 <h2>How to use the toggles</h2>
 <div class="card">
 <p>The <strong>Regulation</strong> row filters county shading by type. The <strong>Projects</strong> row filters pins by stage, and includes the datacentermap.com layer toggle. The <strong>Layers</strong> row adds live transmission line and gas pipeline data from public government sources.</p>
-<p style="margin-top:10px">Numbers in parentheses on each button show how many match that filter right now.</p>
+<p style="margin-top:10px">Numbers in parentheses on each button show how many match that filter right now. The three numbers at the top of the page (counties with regulations, counties with none, and projects tracked) update the same way, live, as entries are added. When the datacentermap.com layer is on, that top project count shows the combined total, with a breakdown in parentheses of how many are tracked projects versus directory listings.</p>
+</div>
+
+<h2>Where the data comes from, and how current it is</h2>
+<div class="card">
+<p>Regulations, projects, and the datacentermap.com layer are a periodically updated snapshot, not a live feed, someone checks the news and public filings and updates the map by hand. The two exceptions are the transmission line and gas pipeline layers, which fetch fresh data straight from public government sources every time you turn them on.</p>
+<p style="margin-top:10px">Even those two have limits worth knowing: about half of the transmission line data is missing voltage information at the source, and the gas pipeline dataset is a snapshot from January 2020, over six years old. Treat it as historically informative, not current.</p>
+</div>
+
+<h2>Found something wrong, or have new information?</h2>
+<div class="card">
+<p>Use the links in the banner above the map to share new information or report a problem, or reach the Mountain Association directly at <a href="mailto:energy@mtassociation.org" style="color:#7d3c98;font-weight:600;">energy@mtassociation.org</a>.</p>
 </div>
 
 </main>
