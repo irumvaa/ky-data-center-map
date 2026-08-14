@@ -1,40 +1,45 @@
 /**
  * KY Data Center Map, Form builder
  * ==================================
- * Run `createForm()` ONCE from the Apps Script editor (select it from the
- * function dropdown at the top, then click Run). It builds the entire
- * branching intake form for you. After it runs, check the Execution Log
- * for the form's edit URL and public URL, open the edit URL to review it,
- * then link its responses to your Sheet (Form > Responses tab > click the
- * green Sheets icon > select the same Sheet SHEET_ID points to in Code.gs).
+ * Builds TWO separate forms, run each once from the Apps Script editor
+ * (select the function from the dropdown, click Run):
  *
- * Note: this creates a NEW form every time you run it. If you need to
- * rebuild it, delete the old one from Google Drive first, or you'll end up
- * with duplicates.
+ *   - `createAddForm()` builds the "Add new information" form (2 branches:
+ *     a new Regulation, or a new Project).
+ *   - `createReportForm()` builds the "Report a problem" form (3 branches:
+ *     a correction to an existing Regulation, Project, or DC facility).
+ *
+ * They're kept separate on purpose, adding something new and reporting a
+ * problem with something already on the map are different enough tasks
+ * that mixing them into one long branching form made the first question
+ * ("what would you like to do?") do too much work.
+ *
+ * After each runs, check the Execution Log for that form's edit URL and
+ * public URL, open the edit URL to review it, then link its responses to
+ * your Sheet (Form > Responses tab > click the green Sheets icon > select
+ * the same Sheet SHEET_ID points to in Code.gs). Both forms link to the
+ * SAME Sheet, they just write to different places depending on what's
+ * submitted.
+ *
+ * Note: each function creates a NEW form every time it's run. If you need
+ * to rebuild one, delete the old one from Google Drive first, or you'll
+ * end up with duplicates.
  */
 
-function createForm() {
-  const form = FormApp.create('KY Data Center Map, Add or Report Information')
+function createAddForm() {
+  const form = FormApp.create('KY Data Center Map, Add New Information')
     .setDescription(
-      'Use this form to add a new data center project or regulation to the ' +
-      'map, or to report a correction to something already on it.'
+      'Use this form to add a new data center project or regulation that ' +
+      'is not yet on the map.'
     )
     .setConfirmationMessage('Thanks, your submission has been received. It will be reviewed before it appears on the map.')
     .setAllowResponseEdits(false)
     .setCollectEmail(false);
 
-  // The router page and question go first, together, since the question
-  // needs to live on this page, not just be created before other pages.
-  form.addPageBreakItem().setTitle('What would you like to do?');
+  form.addPageBreakItem().setTitle('What would you like to add?');
   const router = form.addMultipleChoiceItem()
-    .setTitle('What would you like to do?')
+    .setTitle('What would you like to add?')
     .setRequired(true);
-
-  // Each branch below is: create its page break, add its fields right
-  // there (not batched elsewhere), then explicitly send it to the Thank
-  // You page so it doesn't fall through into the next branch's page.
-  // The router's choices are set at the very end, once every page break
-  // object actually exists to point at.
 
   // ================= ADD A NEW REGULATION =================
   const regPage = form.addPageBreakItem().setTitle('Add a new Regulation');
@@ -90,7 +95,36 @@ function createForm() {
   form.addParagraphTextItem().setTitle('Notes')
     .setHelpText('Write as much as you need, there is no length limit.');
 
-  // ================= REPORT A CHANGE (3 separate pages, same 4 fields each) =================
+  const endPage = form.addPageBreakItem().setTitle('Thank you');
+
+  router.setChoices([
+    router.createChoice('A new Regulation (a moratorium, ordinance, or pending legislation not yet on the map)', regPage),
+    router.createChoice('A new Project (a data center project not yet on the map)', projPage),
+  ]);
+  regPage.setGoToPage(endPage);
+  projPage.setGoToPage(FormApp.PageNavigationType.SUBMIT);
+
+  Logger.log('Add form created.');
+  Logger.log('Edit URL: ' + form.getEditUrl());
+  Logger.log('Public URL: ' + form.getPublishedUrl());
+}
+
+function createReportForm() {
+  const form = FormApp.create('KY Data Center Map, Report a Problem')
+    .setDescription(
+      'Use this form to report something that needs correcting on ' +
+      'something already on the map, a regulation, a project, or a ' +
+      'DC from datacentermap.com listing.'
+    )
+    .setConfirmationMessage('Thanks, your report has been received and will be reviewed.')
+    .setAllowResponseEdits(false)
+    .setCollectEmail(false);
+
+  form.addPageBreakItem().setTitle('What would you like to report a change to?');
+  const router = form.addMultipleChoiceItem()
+    .setTitle('What would you like to report a change to?')
+    .setRequired(true);
+
   const regChangePage = form.addPageBreakItem().setTitle('Report a change to a Regulation');
   addChangeReportFields(form);
 
@@ -104,25 +138,16 @@ function createForm() {
 
   const endPage = form.addPageBreakItem().setTitle('Thank you');
 
-  // Now that every page break actually exists (each created immediately
-  // before its own content, in the order a respondent would move through
-  // them), point the router at the real ones, and make each branch jump
-  // straight to Thank You when it's done rather than falling through into
-  // the next branch's questions.
   router.setChoices([
-    router.createChoice('Add a new Regulation (a moratorium, ordinance, or pending legislation not yet on the map)', regPage),
-    router.createChoice('Add a new Project (a data center project not yet on the map)', projPage),
-    router.createChoice('Report a change to a Regulation (something already on the map needs correcting)', regChangePage),
-    router.createChoice('Report a change to a Project (something already on the map needs correcting)', projChangePage),
-    router.createChoice('Report a change to a DC from datacentermap.com facility (a general hosting/colocation listing, not a tracked project)', dcChangePage),
+    router.createChoice('A Regulation (something already on the map needs correcting)', regChangePage),
+    router.createChoice('A Project (something already on the map needs correcting)', projChangePage),
+    router.createChoice('A DC from datacentermap.com facility (a general hosting/colocation listing, not a tracked project)', dcChangePage),
   ]);
-  regPage.setGoToPage(endPage);
-  projPage.setGoToPage(endPage);
   regChangePage.setGoToPage(endPage);
   projChangePage.setGoToPage(endPage);
   dcChangePage.setGoToPage(FormApp.PageNavigationType.SUBMIT);
 
-  Logger.log('Form created.');
+  Logger.log('Report form created.');
   Logger.log('Edit URL: ' + form.getEditUrl());
   Logger.log('Public URL: ' + form.getPublishedUrl());
 }

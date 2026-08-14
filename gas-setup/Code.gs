@@ -30,12 +30,16 @@
  *    and load in the map's current data.
  * 3. Paste this Sheet's ID (from its URL, the long string between /d/ and
  *    /edit) into SHEET_ID below.
- * 4. Build the Form using SetupForm.gs (run `createForm()` once, see that
- *    file for details), then link its responses to this same Sheet
- *    (Form > Responses > the green Sheets icon > select this Sheet).
+ * 4. Build the two forms from SetupForm.gs: run `createAddForm()` once,
+ *    then `createReportForm()` once. They're kept separate on purpose,
+ *    adding something new and reporting a problem are different enough
+ *    tasks to warrant their own forms rather than one long branching one.
+ *    Link EACH form's responses to this same Sheet (Form > Responses >
+ *    the green Sheets icon > select this Sheet).
  * 5. In the Apps Script editor: Triggers (clock icon) > Add Trigger:
- *      - onFormSubmitHandler, event source "From spreadsheet", event type
- *        "On form submit"
+ *      - onAddFormSubmit, event source "From spreadsheet", pick the ADD
+ *        form's spreadsheet/sheet, event type "On form submit"
+ *      - onReportFormSubmit, same but pointing at the REPORT form
  *      - checkExpiredMoratoria, time-driven, "Day timer", once a day
  *      - onOpen, event source "From spreadsheet", event type "On open"
  *        (only needed if step 1 wasn't done as container-bound; skip this
@@ -43,7 +47,8 @@
  *        Sheet)
  * 6. Deploy > New deployment > Web app. Execute as "Me", who has access
  *    "Anyone". Copy the deployment URL, that's what goes into
- *    index.html's DATA_SOURCE_URL constant.
+ *    index.html's DATA_SOURCE_URL constant. The two form public URLs go
+ *    into index.html's ADD_FORM_URL and REPORT_FORM_URL constants.
  *
  * IMPORTANT: none of this has been run in a live Apps Script environment,
  * since Claude doesn't have access to one. Test each piece after pasting
@@ -186,14 +191,14 @@ function formatDateField(val) {
 // FORM SUBMISSION HANDLING
 // ==========================================================================
 /**
- * Attach this as an "On form submit" trigger (see setup notes at top).
- * Expects the form's first question to be named exactly "What would you
- * like to do?" with the 5 options listed in SetupForm.gs, that's how
- * submissions get routed to the right sheet tab.
+ * Attach as an "On form submit" trigger on the ADD form (see setup notes
+ * at top). Expects that form's first question to be named exactly "What
+ * would you like to add?" with the 2 options from createAddForm() in
+ * SetupForm.gs.
  */
-function onFormSubmitHandler(e) {
+function onAddFormSubmit(e) {
   const responses = e.namedValues; // { "Question text": ["answer"] }
-  const action = getAnswer(responses, 'What would you like to do?');
+  const action = getAnswer(responses, 'What would you like to add?');
 
   let geocoded = null;
   const address = getAnswer(responses, 'Address (optional)');
@@ -208,20 +213,38 @@ function onFormSubmitHandler(e) {
 
   const ss = SpreadsheetApp.openById(SHEET_ID);
 
-  if (action === 'Add a new Regulation') {
+  if (action.indexOf('A new Regulation') === 0) {
     appendRegulation(ss, responses, geocoded);
     notifySubmission('New regulation submitted, pending review', responses);
     const type = getAnswer(responses, 'Type');
     if (type && type.toLowerCase().indexOf('moratorium') !== -1) {
       notifyMoratoriumAdded(responses);
     }
-  } else if (action === 'Add a new Project') {
+  } else if (action.indexOf('A new Project') === 0) {
     appendProject(ss, responses, geocoded);
     notifySubmission('New project submitted, pending review', responses);
-  } else if (action && action.indexOf('Report a change') === 0) {
-    appendPendingReview(ss, action, responses);
-    notifySubmission('Change reported, pending review', responses);
   }
+}
+
+/**
+ * Attach as an "On form submit" trigger on the REPORT form (see setup
+ * notes at top). Expects that form's first question to be named exactly
+ * "What would you like to report a change to?" with the 3 options from
+ * createReportForm() in SetupForm.gs.
+ */
+function onReportFormSubmit(e) {
+  const responses = e.namedValues;
+  const action = getAnswer(responses, 'What would you like to report a change to?');
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+
+  let targetType = '';
+  if (action.indexOf('A Regulation') === 0) targetType = 'Regulation';
+  else if (action.indexOf('A Project') === 0) targetType = 'Project';
+  else if (action.indexOf('A DC from datacentermap.com') === 0) targetType = 'DC facility';
+  if (!targetType) return;
+
+  appendPendingReview(ss, targetType, responses);
+  notifySubmission('Change reported (' + targetType + '), pending review', responses);
 }
 
 function getAnswer(responses, question) {
@@ -279,11 +302,11 @@ function addressOrLinkPresent(r) {
   return !!(getAnswer(r, 'Address (optional)') || getAnswer(r, 'Google Maps link (optional)'));
 }
 
-function appendPendingReview(ss, action, r) {
+function appendPendingReview(ss, targetType, r) {
   const sheet = ss.getSheetByName(PENDING_SHEET);
   sheet.appendRow([
     new Date(),
-    action,
+    targetType,
     getAnswer(r, 'Which one? (name or county)'),
     getAnswer(r, 'What needs to change?'),
     getAnswer(r, 'Source for this correction'),
