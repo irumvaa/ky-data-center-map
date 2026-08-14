@@ -88,14 +88,23 @@ Also handles:
   looked at regulation records for that county. Now it checks regulations, projects, and the
   directory layer, so e.g. Jessamine County (which has no tracked regulation or project) still
   surfaces when searched, because KUSI Data Center is there.
-- **"County" suffix**: "Boyd County" matches the same things as "Boyd" alone. The word "county"
-  is stripped as filler wherever search terms are used, not just for the county name itself.
-  Previously this only worked by accident when "county" happened to appear in a matched note
-  ("Fayette County" worked, most others didn't, tested and fixed).
+- **"County" suffix**: "Boyd County" matches the same things as "Boyd" alone, resolved by
+  stripping a trailing "county" specifically for the county name-prefix check (Previously this
+  only worked by accident when "county" happened to appear in a matched note, "Fayette County"
+  worked, most others didn't, tested and fixed).
 - **Minimum query length**: suggestions only appear once you've typed at least 2 characters. A
   single letter matches almost any text as a substring, so typing "a" was flooding the dropdown
   with nearly the entire map (all 38 relevant counties, all 27 projects, all 25 facilities)
   before this was added.
+- **County-wide vs. city-level, as structured concepts**: searching "county wide", "county-wide",
+  "countywide", "city level", "city-level" surfaces every county with a matching regulation
+  (checked against the actual `level` field) or, for county-wide, a project's `countyWide` flag.
+  This is checked against real data, not fuzzy text, since regulation notes often say things
+  like "Daviess County Fiscal Court approved..." regardless of whether that regulation is
+  actually county-wide or city-only, so text matching alone would give false positives. The
+  county suggestion list itself was also capped at 4 results no matter how many actually
+  matched, so a broad search like "moratorium" (which matches roughly 18 counties) was only
+  ever showing the first 4; raised the cap and added scroll to the dropdown to support it.
 
 ## Popup fields
 Regulations: Location, Type, Duration + Expiration (moratoria only), Source. (No individual
