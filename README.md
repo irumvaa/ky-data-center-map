@@ -112,14 +112,16 @@ important doesn't fit in that space, it goes in Notes instead, not into the fiel
 idea: fields stay scannable, and anyone who wants more detail can check the source link.
 
 ## Color palette
-Regulation types: Moratorium is blue, Ordinance is violet, Pending/Proposed is vermillion. Every
+Regulation types: Moratorium is blue, Ordinance is violet, Pending/Proposed is crimson. Every
 color on the map, including regulation types, county states, project stages, transmission lines,
 and gas pipelines, was checked pairwise for hue/lightness separation to avoid look-alike colors.
 See git history for the specific fixes made (e.g. Operating was originally green, which was too
 close to Ordinance's original teal; project stage colors were originally three shades of purple,
 which read as near-identical from a distance; Ordinance and Pending/Proposed were both originally
 shades of green, which collided with the unrelated project-stage "Rumored" green on a different
-map layer, so both were changed to violet and vermillion).
+map layer, so Ordinance became violet. Pending/Proposed then went through two more attempts,
+vermillion and gold, both too close to the existing amber "city-only" color, before landing on
+crimson after checking worst-case RGB distance against the entire 10-color palette).
 
 ## General colocation/hosting listing (toggleable layer, off by default)
 "DC from datacentermap.com" shows 25 facilities pulled from all 12 of datacentermap.com's
