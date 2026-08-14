@@ -27,8 +27,11 @@
  */
 
 function createAddForm() {
-  const form = FormApp.create('KY Data Center Map, Add New Information')
+  const form = FormApp.create('🟢 ADD New Info, KY Data Center Map')
     .setDescription(
+      'THIS IS THE ADD FORM, for brand-new information only. ' +
+      '(Looking to correct something already on the map? Use the other form, ' +
+      '"🔴 REPORT a Problem.") ' +
       'Use this form to add a new data center project or regulation that ' +
       'is not yet on the map.'
     )
@@ -110,8 +113,10 @@ function createAddForm() {
 }
 
 function createReportForm() {
-  const form = FormApp.create('KY Data Center Map, Report a Problem')
+  const form = FormApp.create('🔴 REPORT a Problem, KY Data Center Map')
     .setDescription(
+      'THIS IS THE REPORT FORM, for corrections to something already on the map only. ' +
+      '(Adding something brand new instead? Use the other form, "🟢 ADD New Info.") ' +
       'Use this form to report something that needs correcting on ' +
       'something already on the map, a regulation, a project, or a ' +
       'DC from datacentermap.com listing.'
