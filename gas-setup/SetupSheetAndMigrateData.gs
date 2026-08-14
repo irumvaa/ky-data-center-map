@@ -23,6 +23,7 @@ function setupSheetAndMigrateData() {
   setupPendingReviewTab(ss);
   setupCountyCentroidsTab(ss);
   setupHelpContentTab(ss);
+  setupInstructionsTab(ss);
   Logger.log('Setup and migration complete.');
 }
 
@@ -337,4 +338,64 @@ function setupHelpContentTab(ss) {
     ["report-p1", "Use the links in the banner above the map to share new information or report a problem, or reach the Mountain Association directly at <a href=\"mailto:energy@mtassociation.org\" style=\"color:#7d3c98;font-weight:600;\">energy@mtassociation.org</a>."],
   ];
   if (rows.length) sheet.getRange(2, 1, rows.length, 2).setValues(rows);
+}
+
+/**
+ * Run THIS one directly from the function dropdown if you only need to
+ * (re)build the instructions tab without touching anything else.
+ */
+function setupInstructionsTabOnly() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  setupInstructionsTab(ss);
+  Logger.log('Instructions tab created.');
+}
+
+/**
+ * A plain-language walkthrough of the review workflow, written directly
+ * into the Sheet so it's discoverable by anyone who opens it, not just
+ * whoever originally set this up. Placed as the very first tab (index 0)
+ * so it's the first thing visible when the Sheet opens.
+ */
+function setupInstructionsTab(ss) {
+  let sheet = ss.getSheetByName('How to Review');
+  if (sheet) ss.deleteSheet(sheet);
+  sheet = ss.insertSheet('How to Review', 0);
+  sheet.setColumnWidth(1, 720);
+
+  const lines = [
+    ['HOW TO REVIEW SUBMISSIONS, KY Data Center Map'],
+    [''],
+    ['WHEN SOMEONE SUBMITS THE ADD FORM (a new Regulation or Project):'],
+    ['- A new row appears in the Regulations or Projects tab, highlighted yellow, Status = Pending Review.'],
+    ['- You get an email. A new Moratorium also triggers a second, separate alert email.'],
+    [''],
+    ['WHEN SOMEONE SUBMITS THE REPORT FORM (a correction to something already on the map):'],
+    ['- A new row appears in the PendingReview tab. It does NOT change the original entry automatically.'],
+    ['- You get an email describing what they say needs to change.'],
+    ['- Find the entry they mean in the right tab, and edit it by hand once you have checked the correction.'],
+    [''],
+    ['TO APPROVE OR REJECT A NEW SUBMISSION, THE EASY WAY:'],
+    ['- Open this Sheet. Look for "Data Center Map Admin" in the menu bar at the top.'],
+    ['- Click "Review next pending item". It shows the submission and asks: Approve, Reject, or Skip.'],
+    ['- Click it again for the next one.'],
+    [''],
+    ['TO APPROVE OR REJECT BY HAND INSTEAD:'],
+    ['- Find the yellow-highlighted row in Regulations, Projects, or DCFacilities.'],
+    ['- Change its Status cell (there is a dropdown) to "Published" (goes live on the map) or "Rejected" (stays off).'],
+    [''],
+    ['WHAT EACH TAB IS FOR:'],
+    ['Regulations: moratoriums, ordinances, and pending legislation shown on the map.'],
+    ['Projects: individual data center projects shown on the map.'],
+    ['DCFacilities: general colocation/hosting listings from datacentermap.com, a separate map layer.'],
+    ['PendingReview: reported corrections to existing entries, waiting on someone to check and apply them by hand.'],
+    ['CountyCentroids: fallback coordinates, used automatically when a submission has no address.'],
+    ["HelpContent: the wording shown on the map's help page. Edit any row's Text to change it, no code needed."],
+    [''],
+    ['NOTHING GOES LIVE ON THE MAP UNTIL ITS STATUS SAYS "Published".'],
+  ];
+  sheet.getRange(1, 1, lines.length, 1).setValues(lines);
+  sheet.getRange(1, 1).setFontWeight('bold').setFontSize(13);
+  [3, 7, 12, 16, 20].forEach(r => sheet.getRange(r, 1).setFontWeight('bold'));
+  sheet.getRange(lines.length, 1).setFontWeight('bold');
+  sheet.setFrozenRows(1);
 }
