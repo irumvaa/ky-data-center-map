@@ -42,7 +42,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .search-wrap input::placeholder{color:#aaa}
 .search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#aaa;font-size:16px;line-height:1;display:none}
 .search-clear.visible{display:block}
-.suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid #e2e0db;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:1000;overflow:hidden;display:none}
+.suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid #e2e0db;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:1000;overflow-y:auto;max-height:360px;display:none}
 .suggestions.open{display:block}
 .suggestion-item{padding:9px 14px;font-size:13px;cursor:pointer;color:#1a1a1a;border-bottom:1px solid #f0efe9;transition:background .1s}
 .suggestion-item:last-child{border-bottom:none}
@@ -409,10 +409,7 @@ function buildSearchIndex(){
 buildSearchIndex();
 
 function searchTerms(q){
-  // "county" is filler in a search context ("Boyd County" should match the
-  // same things as "Boyd") — strip it as a token everywhere terms are used,
-  // rather than requiring every matched blob to literally contain the word.
-  return normalizeSearchText(q).split(/\s+/).filter(Boolean).filter(t=>t!=='county');
+  return normalizeSearchText(q).split(/\s+/).filter(Boolean);
 }
 function blobMatchesAll(blob, terms){ return terms.every(t=>fuzzyIncludes(blob, t)); }
 
@@ -902,6 +899,30 @@ function onSearchInput(){
   const facilityMatches = otherDataCenters.map((d,i)=>({d,i}))
     .filter(o=>terms.length && blobMatchesAll(o.d._blob, terms));
 
+  // "county-wide" / "city-level" are structured concepts (a regulation's
+  // `level` field, or a project's `countyWide` flag), not just words that
+  // happen to appear somewhere in notes text — free text regularly says
+  // things like "X County Fiscal Court" regardless of whether that
+  // regulation is actually county-wide or city-only, so matching by blob
+  // text alone would give false positives. Detected explicitly here and
+  // checked against the real structured field values instead, then folded
+  // into the county suggestion list so every matching county surfaces.
+  const qFlat = q.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+  const isCountyWideQuery = /\bcounty\s*wide\b/.test(qFlat);
+  const isCityLevelQuery = /\bcity\s*(level|wide|only)\b/.test(qFlat);
+  if(isCountyWideQuery || isCityLevelQuery){
+    const matchSet = new Set(countyMatches.map(c=>normKey(c)));
+    if(isCountyWideQuery){
+      regulations.forEach(r=>{ if(normKey(r.level)==='county') matchSet.add(normKey(r.county)); });
+      projects.forEach(p=>{ if(p.countyWide) matchSet.add(normKey(p.county)); });
+    }
+    if(isCityLevelQuery){
+      regulations.forEach(r=>{ if(normKey(r.level)==='city') matchSet.add(normKey(r.county)); });
+    }
+    countyMatches.length = 0;
+    allCounties.forEach(c=>{ if(matchSet.has(normKey(c))) countyMatches.push(c); });
+  }
+
   // A plain city-name search (e.g. "Wilmore", "Prospect") — surfaced as its
   // own suggestion so typing a city always finds it, resolving straight to
   // that city's county and zooming to the city's real coordinates rather
@@ -919,7 +940,7 @@ function onSearchInput(){
     const displayName = key.replace(/\b\w/g, c=>c.toUpperCase());
     html += `<div class="suggestion-item" data-type="city" data-value="${key}"><span class="sug-type-tag" style="background:#dff0e8;color:#0a6b4a;">City</span>${displayName}<span class="sug-sub">${label} County</span></div>`;
   });
-  countyMatches.slice(0,4).forEach(c=>{
+  countyMatches.slice(0,30).forEach(c=>{
     const has = regCountiesSet.has(normKey(c));
     html += `<div class="suggestion-item" data-type="county" data-value="${c}"><span class="sug-type-tag sug-tag-county">County</span>${c} County${!has?'<span class="no-reg">no regulation</span>':''}</div>`;
   });
