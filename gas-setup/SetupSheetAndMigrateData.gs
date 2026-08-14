@@ -297,6 +297,19 @@ function setupCountyCentroidsTab(ss) {
   if (rows.length) sheet.getRange(2, 1, rows.length, 3).setValues(rows);
 }
 
+/**
+ * Run THIS one directly from the function dropdown if you only need to
+ * (re)build the HelpContent tab without touching anything else, calling
+ * setupHelpContentTab(ss) on its own fails, since it expects ss to be
+ * passed in by setupSheetAndMigrateData() and gets nothing when run by
+ * itself from the editor.
+ */
+function setupHelpContentTabOnly() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  setupHelpContentTab(ss);
+  Logger.log('HelpContent tab created.');
+}
+
 function setupHelpContentTab(ss) {
   let sheet = ss.getSheetByName(HELP_SHEET);
   if (sheet) ss.deleteSheet(sheet);
