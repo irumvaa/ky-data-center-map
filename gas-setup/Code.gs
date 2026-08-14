@@ -239,8 +239,10 @@ function onAddFormSubmit(e) {
     : getAnswer(responses, 'County (for a Project)');
 
   let geocoded = null;
-  const address = getAnswer(responses, 'Address (optional)');
-  const mapsLink = getAnswer(responses, 'Google Maps link (optional)');
+  const address = isRegulation
+    ? getAnswer(responses, 'Address (optional, for a Regulation)')
+    : getAnswer(responses, 'Address (optional, for a Project)');
+  const mapsLink = getAnswer(responses, 'Google Maps link (optional)'); // Project branch only, always unique
   if (address || mapsLink) {
     geocoded = geocodeFromAddressOrLink(address, mapsLink);
   }
@@ -293,17 +295,17 @@ function appendRegulation(ss, r, geocoded) {
   const sheet = ss.getSheetByName(REG_SHEET);
   sheet.appendRow([
     getAnswer(r, 'County (for a Regulation)'),
-    getAnswer(r, 'City (optional)'),
+    getAnswer(r, 'City (optional, for a Regulation)'),
     getAnswer(r, 'Is this county-wide, or specific to one city within the county?'),
     getAnswer(r, 'Type'),
     getAnswer(r, 'Start date'),
     getAnswer(r, 'Duration'),
     getAnswer(r, 'Expiration date (if known)'),
-    getAnswer(r, 'Notes'),
+    getAnswer(r, 'Notes (for a Regulation)'),
     geocoded ? geocoded.lat : '',
     geocoded ? geocoded.lng : '',
-    getAnswer(r, 'Address (optional)'),
-    getAnswer(r, 'Source(s), one or more links'),
+    getAnswer(r, 'Address (optional, for a Regulation)'),
+    getAnswer(r, 'Source(s), one or more links (for a Regulation)'),
     STATUS_PENDING,
     false,
   ]);
@@ -314,9 +316,9 @@ function appendProject(ss, r, geocoded) {
   const sheet = ss.getSheetByName(PROJ_SHEET);
   sheet.appendRow([
     getAnswer(r, 'Project name'),
-    getAnswer(r, 'City (optional)'),
+    getAnswer(r, 'City (optional, for a Project)'),
     getAnswer(r, 'County (for a Project)'),
-    getAnswer(r, 'Address (optional)'),
+    getAnswer(r, 'Address (optional, for a Project)'),
     getAnswer(r, 'Size/Capacity'),
     getAnswer(r, 'Developer'),
     getAnswer(r, 'Planning & zoning status'),
@@ -324,8 +326,8 @@ function appendProject(ss, r, geocoded) {
     getAnswer(r, 'Tariff'),
     getAnswer(r, 'Estimated completion date'),
     getAnswer(r, 'Tenant'),
-    getAnswer(r, 'Source(s), one or more links'),
-    getAnswer(r, 'Notes'),
+    getAnswer(r, 'Source(s), one or more links (for a Project)'),
+    getAnswer(r, 'Notes (for a Project)'),
     getAnswer(r, 'Stage'),
     addressOrLinkPresent(r) ? 'FALSE' : 'TRUE', // countyWide: true only if no exact site given
     geocoded ? geocoded.lat : '',
@@ -336,7 +338,7 @@ function appendProject(ss, r, geocoded) {
 }
 
 function addressOrLinkPresent(r) {
-  return !!(getAnswer(r, 'Address (optional)') || getAnswer(r, 'Google Maps link (optional)'));
+  return !!(getAnswer(r, 'Address (optional, for a Project)') || getAnswer(r, 'Google Maps link (optional)'));
 }
 
 function appendPendingReview(ss, targetType, r) {
