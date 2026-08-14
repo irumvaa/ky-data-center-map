@@ -145,10 +145,13 @@ Kentucky markets, ordinary commercial colocation/hosting providers (Flexential, 
 BluegrassNet, CBTS, CyrusOne, etc.), not the tracked hyperscale/AI projects this map otherwise
 covers. Popups show Operator, Developer, Status, Size/Capacity, Address, and a source link.
 Rendered as a square marker (never confused with the teardrop project pins), colored by the
-Status field: blue for Proposed, orange for Under construction, muted stone-gray for
-Unknown/unconfirmed, steel gray (the default) for Operational. Status text in the underlying
-data is inconsistent free text rather than a clean enum, so this is classified by keyword
-(`otherDCStatusColor()`), not an exact match, with a safe default for anything unrecognized.
+Status field: indigo for Proposed and magenta for Operational, reusing the exact same colors
+as the matching project stage since they're the same real-world concept on a different data
+layer; orange for Under construction; muted stone-gray for Unknown/unconfirmed (also the
+fallback for any unrecognized status text). Status text in the underlying data is inconsistent
+free text rather than a clean enum, so this is classified by keyword
+(`otherDCStatusKey()`), not an exact match. Both the marker color and the legend counts derive
+from that single classifier function, so they can't drift out of sync with each other.
 Coordinates are approximate for facilities without a specific address (city-level with
 manual jitter), exact where a street address was confirmed. Cross-checked against a manually
 researched spreadsheet, which caught a real error (an entry called "SUBTAC" was actually a
