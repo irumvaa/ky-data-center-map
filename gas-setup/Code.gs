@@ -1,44 +1,35 @@
 /**
- * KY Data Center Map - Apps Script backend
+ * KY Data Center Map — Apps Script backend
  * ==========================================
  * Serves the map's live data as JSON, processes new Google Form submissions,
  * geocodes addresses/Google Maps links, and sends email notifications.
  *
- * Publishing workflow: nothing a visitor submits goes live on the map
- * automatically. Every new regulation or project lands in its sheet tab
- * with Status = "Pending Review" (highlighted light yellow so it's easy to
- * spot). The map only ever shows rows marked Status = "Published". To
- * publish something, open the Sheet and change that row's Status cell
- * (there's a dropdown) from "Pending Review" to "Published". Reported
- * corrections to existing entries land in the separate PendingReview tab
- * instead, since those are proposed edits to already-published rows, not
- * new rows of their own; apply them by hand in the relevant tab once
- * reviewed.
- *
  * SETUP (do this once):
- * 1. Create a new Google Sheet. Run `setupSheetAndMigrateData()` from
- *    SetupSheetAndMigrateData.gs once, to create all the tabs, headers,
- *    data-validation dropdowns, and load in the map's current data.
+ * 1. Create a new Google Sheet. Run `setupSheet()` from this script once
+ *    (Run > setupSheet) to create all the tabs and headers automatically.
  * 2. Paste this Sheet's ID (from its URL, the long string between /d/ and
  *    /edit) into SHEET_ID below.
- * 3. Build the Form using SetupForm.gs (run `createForm()` once, see that
+ * 3. Build the Form using SetupForm.gs (run `createForm()` once — see that
  *    file for details), then link its responses to this same Sheet
  *    (Form > Responses > the green Sheets icon > select this Sheet).
  * 4. In the Apps Script editor: Triggers (clock icon) > Add Trigger:
  *      - onFormSubmitHandler, event source "From spreadsheet", event type
  *        "On form submit"
  *      - checkExpiredMoratoria, time-driven, "Day timer", once a day
+ *      - sendMonthlyVisitReportIfFirstMonday, time-driven, "Week timer",
+ *        every Monday
  * 5. Deploy > New deployment > Web app. Execute as "Me", who has access
- *    "Anyone". Copy the deployment URL, that's what goes into
- *    index.html's DATA_SOURCE_URL constant.
+ *    "Anyone". Copy the deployment URL — that's what goes into
+ *    index.html's DATA_SOURCE_URL constant. The same URL with
+ *    "?action=visit" appended is what the map pings to count a visit.
  *
  * IMPORTANT: none of this has been run in a live Apps Script environment,
  * since Claude doesn't have access to one. Test each piece after pasting
  * it in, starting with `doGet()` (deploy, then visit the deployment URL
- * directly in a browser, you should see JSON).
+ * directly in a browser — you should see JSON).
  */
 
-// ====== CONFIG, fill these in ======
+// ====== CONFIG — fill these in ======
 const SHEET_ID = 'PASTE_YOUR_SHEET_ID_HERE';
 const NOTIFY_EMAIL = 'energy@mtassociation.org';
 
@@ -47,17 +38,19 @@ const REG_SHEET = 'Regulations';
 const PROJ_SHEET = 'Projects';
 const DC_SHEET = 'DCFacilities';
 const PENDING_SHEET = 'PendingReview';
+const VISIT_SHEET = 'VisitLog';
 const CENTROID_SHEET = 'CountyCentroids';
-
-const STATUS_PENDING = 'Pending Review';
-const STATUS_PUBLISHED = 'Published';
-const STATUS_REJECTED = 'Rejected';
-const PENDING_ROW_COLOR = '#fff7cc'; // light yellow, so new rows stand out for review
+const FORM_RESPONSES_SHEET = 'Form Responses 1'; // Google's default name — check yours matches
 
 // ==========================================================================
 // WEB APP ENTRY POINT
 // ==========================================================================
 function doGet(e) {
+  const action = e.parameter && e.parameter.action;
+  if (action === 'visit') {
+    logVisit();
+    return ContentService.createTextOutput('ok').setMimeType(ContentService.MimeType.TEXT);
+  }
   const data = buildMapData();
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
@@ -83,7 +76,7 @@ function readPublishedRows(ss, sheetName, mapFn) {
     const row = values[i];
     const rec = rowToObject(headers, row);
     if (!rec.County && !rec.Name) continue; // skip blank rows
-    if (rec.Status !== STATUS_PUBLISHED) continue; // only published rows reach the map
+    if (rec.Status && rec.Status !== 'Published') continue; // skip pending/rejected rows
     out.push(mapFn(rec));
   }
   return out;
@@ -142,7 +135,7 @@ function rowToDCFacility(rec) {
     name: String(rec.Name || ''),
     operator: String(rec.Operator || ''),
     developer: String(rec.Developer || ''),
-    status: String(rec.Status_Field || ''),
+    status: String(rec.Status_Field || rec.FacilityStatus || ''), // see note in setupSheet()
     size: String(rec.Size || ''),
     address: String(rec.Address || ''),
     city: String(rec.City || ''),
@@ -164,9 +157,42 @@ function splitSources(raw) {
 function formatDateField(val) {
   if (!val) return '';
   if (val instanceof Date) {
-    return Utilities.formatDate(val, 'America/New_York', 'M/d/yy'); // matches the map's existing convention
+    // Matches the map's existing M/D/YY convention
+    return Utilities.formatDate(val, 'America/New_York', 'M/d/yy');
   }
   return String(val);
+}
+
+// ==========================================================================
+// VISIT COUNTING
+// ==========================================================================
+function logVisit() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(VISIT_SHEET);
+  sheet.appendRow([new Date()]);
+}
+
+/**
+ * Run this daily is fine, but it's designed to be triggered weekly on
+ * Mondays (Apps Script has no native "1st Monday of month" trigger type,
+ * so this checks that condition itself and only sends when it's true).
+ */
+function sendMonthlyVisitReportIfFirstMonday() {
+  const now = new Date();
+  const isMonday = now.getDay() === 1;
+  const isFirstWeek = now.getDate() <= 7;
+  if (!isMonday || !isFirstWeek) return;
+
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(VISIT_SHEET);
+  const values = sheet.getDataRange().getValues();
+  const totalVisits = Math.max(0, values.length - 1); // minus header row, if you added one
+
+  MailApp.sendEmail({
+    to: NOTIFY_EMAIL,
+    subject: 'KY Data Center Map — monthly visit count',
+    body: 'Total visits recorded so far: ' + totalVisits,
+  });
 }
 
 // ==========================================================================
@@ -175,7 +201,7 @@ function formatDateField(val) {
 /**
  * Attach this as an "On form submit" trigger (see setup notes at top).
  * Expects the form's first question to be named exactly "What would you
- * like to do?" with the 5 options listed in SetupForm.gs, that's how
+ * like to do?" with the 5 options listed in SetupForm.gs — this is how
  * submissions get routed to the right sheet tab.
  */
 function onFormSubmitHandler(e) {
@@ -197,17 +223,17 @@ function onFormSubmitHandler(e) {
 
   if (action === 'Add a new Regulation') {
     appendRegulation(ss, responses, geocoded);
-    notifySubmission('New regulation submitted, pending review', responses);
+    notifySubmission('New regulation submitted', responses);
     const type = getAnswer(responses, 'Type');
     if (type && type.toLowerCase().indexOf('moratorium') !== -1) {
       notifyMoratoriumAdded(responses);
     }
   } else if (action === 'Add a new Project') {
     appendProject(ss, responses, geocoded);
-    notifySubmission('New project submitted, pending review', responses);
+    notifySubmission('New project submitted', responses);
   } else if (action && action.indexOf('Report a change') === 0) {
     appendPendingReview(ss, action, responses);
-    notifySubmission('Change reported, pending review', responses);
+    notifySubmission('Change reported (pending review)', responses);
   }
 }
 
@@ -221,7 +247,7 @@ function appendRegulation(ss, r, geocoded) {
   sheet.appendRow([
     getAnswer(r, 'County'),
     getAnswer(r, 'City (optional)'),
-    getAnswer(r, 'Is this county-wide, or specific to one city within the county?'),
+    getAnswer(r, 'Is this county-wide, city-level, or both?'),
     getAnswer(r, 'Type'),
     getAnswer(r, 'Start date'),
     getAnswer(r, 'Duration'),
@@ -230,11 +256,9 @@ function appendRegulation(ss, r, geocoded) {
     geocoded ? geocoded.lat : '',
     geocoded ? geocoded.lng : '',
     getAnswer(r, 'Address (optional)'),
-    getAnswer(r, 'Source(s), one or more links'),
-    STATUS_PENDING,
-    false,
+    getAnswer(r, 'Source(s) — one or more links'),
+    'Published',
   ]);
-  highlightLastRow(sheet);
 }
 
 function appendProject(ss, r, geocoded) {
@@ -251,18 +275,17 @@ function appendProject(ss, r, geocoded) {
     getAnswer(r, 'Tariff'),
     getAnswer(r, 'Estimated completion date'),
     getAnswer(r, 'Tenant'),
-    getAnswer(r, 'Source(s), one or more links'),
+    getAnswer(r, 'Source(s) — one or more links'),
     getAnswer(r, 'Notes'),
     getAnswer(r, 'Stage'),
-    addressOrLinkPresent(r) ? 'FALSE' : 'TRUE', // countyWide: true only if no exact site given
+    address_or_link_present(r) ? 'FALSE' : 'TRUE', // countyWide: true only if no exact site given
     geocoded ? geocoded.lat : '',
     geocoded ? geocoded.lng : '',
-    STATUS_PENDING,
+    'Published',
   ]);
-  highlightLastRow(sheet);
 }
 
-function addressOrLinkPresent(r) {
+function address_or_link_present(r) {
   return !!(getAnswer(r, 'Address (optional)') || getAnswer(r, 'Google Maps link (optional)'));
 }
 
@@ -276,39 +299,6 @@ function appendPendingReview(ss, action, r) {
     getAnswer(r, 'Source for this correction'),
     getAnswer(r, 'Your email (optional, in case we have questions)'),
   ]);
-  highlightLastRow(sheet);
-}
-
-function highlightLastRow(sheet) {
-  const lastRow = sheet.getLastRow();
-  const lastCol = sheet.getLastColumn();
-  sheet.getRange(lastRow, 1, 1, lastCol).setBackground(PENDING_ROW_COLOR);
-}
-
-/**
- * Lists everything still waiting on a decision, across all three tabs plus
- * the reported-change queue. Run this manually (Run > listPendingItems)
- * any time to check what needs attention, results show in the Execution
- * Log. Not wired to anything automatic, added since a running list is
- * easier to work from than scrolling every tab looking for yellow rows.
- */
-function listPendingItems() {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  [REG_SHEET, PROJ_SHEET, DC_SHEET].forEach(name => {
-    const sheet = ss.getSheetByName(name);
-    const values = sheet.getDataRange().getValues();
-    const headers = values[0];
-    const statusCol = headers.indexOf('Status');
-    const nameCol = headers.indexOf('Name') >= 0 ? headers.indexOf('Name') : headers.indexOf('County');
-    for (let i = 1; i < values.length; i++) {
-      if (values[i][statusCol] === STATUS_PENDING) {
-        Logger.log(name + ' row ' + (i + 1) + ': ' + values[i][nameCol] + ' (pending)');
-      }
-    }
-  });
-  const pendingSheet = ss.getSheetByName(PENDING_SHEET);
-  const pendingCount = Math.max(0, pendingSheet.getLastRow() - 1);
-  Logger.log('Reported changes waiting in PendingReview: ' + pendingCount);
 }
 
 // ==========================================================================
@@ -318,7 +308,7 @@ function notifySubmission(subjectPrefix, responses) {
   const lines = Object.keys(responses).map(q => q + ': ' + responses[q][0]);
   MailApp.sendEmail({
     to: NOTIFY_EMAIL,
-    subject: 'KY Data Center Map, ' + subjectPrefix,
+    subject: 'KY Data Center Map — ' + subjectPrefix,
     body: lines.join('\n'),
   });
 }
@@ -326,20 +316,18 @@ function notifySubmission(subjectPrefix, responses) {
 function notifyMoratoriumAdded(r) {
   MailApp.sendEmail({
     to: NOTIFY_EMAIL,
-    subject: 'KY Data Center Map, new moratorium submitted (pending review)',
+    subject: 'KY Data Center Map — new moratorium added',
     body: 'A new moratorium was just submitted for ' + getAnswer(r, 'County') +
-          ' County. It will not appear on the map until its row in the ' +
-          'Regulations sheet is changed from "Pending Review" to "Published".',
+          ' County. Check the Regulations sheet to review it.',
   });
 }
 
 /**
- * Run daily. Compares each PUBLISHED moratorium's Expiration date to
- * today (pending ones aren't live yet, so there's nothing to notify about
- * for those). The map itself already hides expired moratoria client-side
- * (dropExpiredMoratoria in index.html); this just sends the email the
- * first time each one crosses its expiration date, tracked via a
- * "NotifiedExpired" column so it doesn't re-send every day after.
+ * Run daily. Compares each regulation's Expiration date to today; the map
+ * itself already hides expired moratoria client-side (dropExpiredMoratoria
+ * in index.html), this just sends the email the first time each one crosses
+ * its expiration date, tracked via a "NotifiedExpired" column so it doesn't
+ * re-send every day after.
  */
 function checkExpiredMoratoria() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
@@ -349,7 +337,6 @@ function checkExpiredMoratoria() {
   const expCol = headers.indexOf('Expiration');
   const typeCol = headers.indexOf('Type');
   const countyCol = headers.indexOf('County');
-  const statusCol = headers.indexOf('Status');
   const notifiedCol = headers.indexOf('NotifiedExpired');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -357,14 +344,13 @@ function checkExpiredMoratoria() {
   for (let i = 1; i < values.length; i++) {
     const row = values[i];
     if (row[typeCol] !== 'Moratorium') continue;
-    if (row[statusCol] !== STATUS_PUBLISHED) continue;
     if (row[notifiedCol] === true || row[notifiedCol] === 'TRUE') continue;
     const exp = row[expCol];
     if (!(exp instanceof Date)) continue;
     if (exp < today) {
       MailApp.sendEmail({
         to: NOTIFY_EMAIL,
-        subject: 'KY Data Center Map, a moratorium has expired',
+        subject: 'KY Data Center Map — a moratorium has expired',
         body: 'The moratorium in ' + row[countyCol] + ' County expired on ' +
               Utilities.formatDate(exp, 'America/New_York', 'M/d/yyyy') + '.',
       });
@@ -406,7 +392,7 @@ function geocodeFromAddressOrLink(address, mapsLink) {
  *   https://www.google.com/maps?q=37.123,-84.456
  *   https://maps.google.com/maps/place/.../@37.123,-84.456,17z
  * Does NOT resolve shortened goo.gl/maps.app.goo.gl links to their real
- * coordinates, Apps Script would need an extra UrlFetchApp.fetch() call
+ * coordinates — Apps Script would need an extra UrlFetchApp.fetch() call
  * to follow the redirect, not implemented here. If you're pasting a
  * shortened link, expand it in a browser first and paste the full URL.
  */
@@ -422,7 +408,7 @@ function parseGoogleMapsLink(url) {
  * Fallback when there's no address/link at all: use the county's centroid,
  * the same coordinates the map already uses for "county-wide, exact site
  * unknown" projects. Reads from the CountyCentroids tab (pre-populated by
- * setupSheetAndMigrateData() from the map's own county_centroids.json data).
+ * setupSheet() from the map's own county_centroids.json data).
  */
 function countyCentroid(countyName) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
