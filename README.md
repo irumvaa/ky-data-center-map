@@ -212,37 +212,51 @@ utility's name belongs in the Tariff field instead, since tariffs are utility-sp
 known but its TSR/ESA status isn't, leave Utility status blank ("Not available") rather than
 putting the company name there as a stand-in.
 
-## Future: live data via Apps Script
-The plan (same pattern as eky-ev-map) is a Google Apps Script Web App sitting in front of the
-tracking sheets, so non-technical people can edit a spreadsheet directly, with a verification/
-review step before anything reaches the public map, for example only rows marked "Approved" in a
-status column get served. This map's code already has the fallback-then-live-refresh scaffolding
-in place for that, currently inert:
+## Live data via Apps Script
+A Google Apps Script Web App now sits in front of a Google Sheet, so non-technical people can
+add or correct information through a Google Form without anyone editing this file directly. The
+full backend lives in `gas-setup/` in this repo (Code.gs, SetupForm.gs,
+SetupSheetAndMigrateData.gs), see that folder for setup instructions.
 
-- `DATA_SOURCE_URL` near the top of `index.html` is blank. As long as it's blank, the map runs
-  exactly as it does today: 100% on the embedded data, zero network calls beyond map tiles and
-  the transmission/pipeline layers. Nothing changes until someone deploys the Apps Script and
-  pastes its URL in.
-- Once that URL is filled in, the map renders instantly from the embedded fallback data (so it's
-  never blank while waiting on a request), then quietly fetches the Apps Script endpoint in the
-  background. If that succeeds, it swaps in the fresh data and re-renders. If it fails for any
-  reason, the embedded data keeps the map fully working, silently.
-- The Apps Script is expected to return JSON shaped exactly like this:
+**Nothing submitted goes live automatically.** New regulations and projects land in their sheet
+tab marked Status = "Pending Review" (highlighted light yellow), and only appear on the map once
+someone manually flips that cell to "Published." Reported corrections to existing entries land
+in a separate PendingReview tab for the same reason, applying them means editing the actual row
+by hand once reviewed. Data-validation dropdowns on the Level/Type/Stage/Status columns help
+prevent typos there from silently breaking the map's coloring logic.
+
+This map's own code already has the fallback-then-live-refresh scaffolding built in:
+
+- `DATA_SOURCE_URL` and `FORM_URL` near the top of `index.html` are blank until the Apps Script
+  is deployed. As long as they're blank, the map runs exactly as it does without them: 100% on
+  the embedded data, and the "Add or correct" links inside popups stay hidden rather than
+  pointing nowhere.
+- Once `DATA_SOURCE_URL` is filled in, the map renders instantly from the embedded fallback data
+  (so it's never blank while waiting on a request), then quietly fetches the Apps Script endpoint
+  in the background. If that succeeds, it swaps in the fresh data (regulations, projects, and the
+  datacentermap.com layer all three) and re-renders. If it fails for any reason, the embedded
+  data keeps the map fully working, silently.
+- The Apps Script returns JSON shaped exactly like this:
   ```json
   {
     "regulations": [ { "county": "...", "city": "...", "level": "County|City",
-      "type": "Moratorium|Ordinance|Pending/Proposed", "period": "...",
-      "expiration": "M/D/YY", "links": ["..."], "notes": "...", "lat": 0.0, "lng": 0.0 } ],
-    "projects": [ { "name": "...", "city": "...", "county": "...", "size": "...",
-      "developer": "...", "pz": "...", "utility": "...", "links": ["..."], "notes": "...",
-      "stage": "Rumored|Proposed|Operating", "countyWide": false, "lat": 0.0, "lng": 0.0,
-      "tariff": "...", "completionDate": "...", "tenant": "..." } ]
+      "type": "Moratorium|Ordinance|Pending/Proposed", "startDate": "...", "period": "...",
+      "expiration": "M/D/YY", "address": "...", "links": ["..."], "notes": "...",
+      "lat": 0.0, "lng": 0.0 } ],
+    "projects": [ { "name": "...", "city": "...", "county": "...", "address": "...",
+      "size": "...", "developer": "...", "pz": "...", "utility": "...", "links": ["..."],
+      "notes": "...", "stage": "Rumored|Proposed|Operating", "countyWide": false,
+      "lat": 0.0, "lng": 0.0, "tariff": "...", "completionDate": "...", "tenant": "..." } ],
+    "otherDataCenters": [ { "name": "...", "operator": "...", "developer": "...",
+      "status": "...", "size": "...", "address": "...", "city": "...", "county": "...",
+      "lat": 0.0, "lng": 0.0, "link": "..." } ]
   }
   ```
-  Same field names as the embedded `regulations`/`projects` arrays in `index.html`. That's not
-  a coincidence, it means whoever builds the Apps Script can copy the shape directly from there.
+  Same field names as the embedded arrays in `index.html`. That's not a coincidence, the
+  Apps Script reads directly off these names, so this file and that backend can't drift apart.
 - **No `contact` field**: that was removed from this map entirely (data, popups, search) and
-  shouldn't be reintroduced through the live pipeline either.
+  isn't reintroduced through the live pipeline either. Submitters can optionally leave their own
+  email for follow-up questions, but that stays in the Sheet, it's never published to the map.
 - `lat`/`lng` need to be resolved before they reach the script (geocoded from city/county), the
   client doesn't do that itself.
 - The client always uses the field values as-is; it does not re-verify anything. All review/
