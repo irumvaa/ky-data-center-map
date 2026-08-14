@@ -226,11 +226,21 @@ function formatDateField(val) {
 function onAddFormSubmit(e) {
   const responses = e.namedValues; // { "Question text": ["answer"] }
   const action = getAnswer(responses, 'What would you like to add?');
+  const isRegulation = action.indexOf('A new Regulation') === 0;
+  const isProject = action.indexOf('A new Project') === 0;
+
+  // The Regulation and Project branches each have their own "County"
+  // question, since a single shared question title breaks Apps Script's
+  // e.namedValues (it can't disambiguate two items with the identical
+  // title, and consistently reads the wrong one). Picking the right one
+  // by branch here, rather than assuming a plain "County" key exists.
+  const county = isRegulation
+    ? getAnswer(responses, 'County (for a Regulation)')
+    : getAnswer(responses, 'County (for a Project)');
 
   let geocoded = null;
   const address = getAnswer(responses, 'Address (optional)');
   const mapsLink = getAnswer(responses, 'Google Maps link (optional)');
-  const county = getAnswer(responses, 'County');
   if (address || mapsLink) {
     geocoded = geocodeFromAddressOrLink(address, mapsLink);
   }
@@ -240,14 +250,14 @@ function onAddFormSubmit(e) {
 
   const ss = SpreadsheetApp.openById(SHEET_ID);
 
-  if (action.indexOf('A new Regulation') === 0) {
+  if (isRegulation) {
     appendRegulation(ss, responses, geocoded);
     notifySubmission('New regulation submitted, pending review', responses);
     const type = getAnswer(responses, 'Type');
     if (type && type.toLowerCase().indexOf('moratorium') !== -1) {
       notifyMoratoriumAdded(responses);
     }
-  } else if (action.indexOf('A new Project') === 0) {
+  } else if (isProject) {
     appendProject(ss, responses, geocoded);
     notifySubmission('New project submitted, pending review', responses);
   }
@@ -282,7 +292,7 @@ function getAnswer(responses, question) {
 function appendRegulation(ss, r, geocoded) {
   const sheet = ss.getSheetByName(REG_SHEET);
   sheet.appendRow([
-    getAnswer(r, 'County'),
+    getAnswer(r, 'County (for a Regulation)'),
     getAnswer(r, 'City (optional)'),
     getAnswer(r, 'Is this county-wide, or specific to one city within the county?'),
     getAnswer(r, 'Type'),
@@ -305,7 +315,7 @@ function appendProject(ss, r, geocoded) {
   sheet.appendRow([
     getAnswer(r, 'Project name'),
     getAnswer(r, 'City (optional)'),
-    getAnswer(r, 'County'),
+    getAnswer(r, 'County (for a Project)'),
     getAnswer(r, 'Address (optional)'),
     getAnswer(r, 'Size/Capacity'),
     getAnswer(r, 'Developer'),
@@ -491,7 +501,7 @@ function notifyMoratoriumAdded(r) {
   MailApp.sendEmail({
     to: NOTIFY_EMAIL,
     subject: 'KY Data Center Map, new moratorium submitted (pending review)',
-    body: 'A new moratorium was just submitted for ' + getAnswer(r, 'County') +
+    body: 'A new moratorium was just submitted for ' + getAnswer(r, 'County (for a Regulation)') +
           ' County. It will not appear on the map until its row in the ' +
           'Regulations sheet is changed from "Pending Review" to "Published".',
   });

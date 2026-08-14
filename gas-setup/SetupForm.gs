@@ -43,7 +43,7 @@ function createAddForm() {
 
   // ================= ADD A NEW REGULATION =================
   const regPage = form.addPageBreakItem().setTitle('Add a new Regulation');
-  form.addTextItem().setTitle('County').setRequired(true);
+  form.addTextItem().setTitle('County (for a Regulation)').setRequired(true);
   form.addTextItem().setTitle('City (optional)');
   form.addMultipleChoiceItem()
     .setTitle('Is this county-wide, or specific to one city within the county?')
@@ -68,7 +68,7 @@ function createAddForm() {
   // ================= ADD A NEW PROJECT =================
   const projPage = form.addPageBreakItem().setTitle('Add a new Project');
   form.addTextItem().setTitle('Project name').setRequired(true);
-  form.addTextItem().setTitle('County').setRequired(true);
+  form.addTextItem().setTitle('County (for a Project)').setRequired(true);
   form.addTextItem().setTitle('City (optional)');
   form.addTextItem().setTitle('Address (optional)')
     .setHelpText('If you know the exact site. Leave blank if you only know the county, the pin will be placed at the county center in that case.');
