@@ -44,7 +44,7 @@ function createAddForm() {
   // ================= ADD A NEW REGULATION =================
   const regPage = form.addPageBreakItem().setTitle('Add a new Regulation');
   form.addTextItem().setTitle('County (for a Regulation)').setRequired(true);
-  form.addTextItem().setTitle('City (optional)');
+  form.addTextItem().setTitle('City (optional, for a Regulation)');
   form.addMultipleChoiceItem()
     .setTitle('Is this county-wide, or specific to one city within the county?')
     .setChoiceValues(['County-wide', 'City-level (one city only)'])
@@ -57,20 +57,20 @@ function createAddForm() {
   form.addTextItem().setTitle('Duration')
     .setHelpText('e.g. "1 year", "180 days", "permanent", however it was described.');
   form.addDateItem().setTitle('Expiration date (if known)');
-  form.addTextItem().setTitle('Address (optional)')
+  form.addTextItem().setTitle('Address (optional, for a Regulation)')
     .setHelpText('Only if this is tied to a specific site, not usually needed for a regulation.');
-  form.addParagraphTextItem().setTitle('Source(s), one or more links')
+  form.addParagraphTextItem().setTitle('Source(s), one or more links (for a Regulation)')
     .setHelpText('Paste one link per line, or separate with commas. No limit on how many.')
     .setRequired(true);
-  form.addParagraphTextItem().setTitle('Notes')
+  form.addParagraphTextItem().setTitle('Notes (for a Regulation)')
     .setHelpText('Anything else worth knowing. Write as much as you need, there is no length limit.');
 
   // ================= ADD A NEW PROJECT =================
   const projPage = form.addPageBreakItem().setTitle('Add a new Project');
   form.addTextItem().setTitle('Project name').setRequired(true);
   form.addTextItem().setTitle('County (for a Project)').setRequired(true);
-  form.addTextItem().setTitle('City (optional)');
-  form.addTextItem().setTitle('Address (optional)')
+  form.addTextItem().setTitle('City (optional, for a Project)');
+  form.addTextItem().setTitle('Address (optional, for a Project)')
     .setHelpText('If you know the exact site. Leave blank if you only know the county, the pin will be placed at the county center in that case.');
   form.addTextItem().setTitle('Google Maps link (optional)')
     .setHelpText('An alternative to typing the address, paste a Google Maps link and we\'ll use its coordinates. Use the full link, not a shortened goo.gl one.');
@@ -89,10 +89,10 @@ function createAddForm() {
     .setRequired(true);
   form.addTextItem().setTitle('Estimated completion date');
   form.addTextItem().setTitle('Tenant');
-  form.addParagraphTextItem().setTitle('Source(s), one or more links')
+  form.addParagraphTextItem().setTitle('Source(s), one or more links (for a Project)')
     .setHelpText('Paste one link per line, or separate with commas. No limit on how many.')
     .setRequired(true);
-  form.addParagraphTextItem().setTitle('Notes')
+  form.addParagraphTextItem().setTitle('Notes (for a Project)')
     .setHelpText('Write as much as you need, there is no length limit.');
 
   const endPage = form.addPageBreakItem().setTitle('Thank you');
