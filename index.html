@@ -409,7 +409,13 @@ function buildSearchIndex(){
 buildSearchIndex();
 
 function searchTerms(q){
-  return normalizeSearchText(q).split(/\s+/).filter(Boolean);
+  // "county" is filler for matching purposes ("moratorium Fayette County"
+  // should find the same things as "moratorium Fayette") — stripped here
+  // so it doesn't block matches on records that don't literally contain
+  // the word. The dedicated county-wide/city-level phrase detection below
+  // reads the raw query text directly, not this term list, so stripping
+  // it here doesn't affect that.
+  return normalizeSearchText(q).split(/\s+/).filter(Boolean).filter(t=>t!=='county');
 }
 function blobMatchesAll(blob, terms){ return terms.every(t=>fuzzyIncludes(blob, t)); }
 
