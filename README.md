@@ -88,10 +88,14 @@ Also handles:
   looked at regulation records for that county. Now it checks regulations, projects, and the
   directory layer, so e.g. Jessamine County (which has no tracked regulation or project) still
   surfaces when searched, because KUSI Data Center is there.
-- **"County" suffix**: "Boyd County" matches the same things as "Boyd" alone, resolved by
-  stripping a trailing "county" specifically for the county name-prefix check (Previously this
-  only worked by accident when "county" happened to appear in a matched note, "Fayette County"
-  worked, most others didn't, tested and fixed).
+- **"County" suffix, everywhere**: "Boyd County" matches the same as "Boyd" alone, and this
+  holds even in combined searches like "Ordinance Fayette County" or "moratorium Boyd County",
+  not just a bare county name. The word "county" is stripped as filler from every search term,
+  since most project records don't literally contain the word "county" and would otherwise fail
+  to match once it's added to the query (tested and fixed after finding this exact case broke
+  project matching while regulation matching stayed fine). The dedicated county-wide/city-level
+  phrase detection above reads the raw typed text directly, not this filtered term list, so
+  stripping "county" here doesn't affect it.
 - **Minimum query length**: suggestions only appear once you've typed at least 2 characters. A
   single letter matches almost any text as a substring, so typing "a" was flooding the dropdown
   with nearly the entire map (all 38 relevant counties, all 27 projects, all 25 facilities)
