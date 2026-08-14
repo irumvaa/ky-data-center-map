@@ -20,11 +20,6 @@ ever unreachable, so a Sheet/Apps Script outage never breaks the public map. Tra
 and gas pipelines still load live from public third-party government datasets, unrelated to the
 Mountain Association's own Sheet.
 
-**Trade-off:** the embedded fallback data is a snapshot, not automatically kept in sync with the
-Sheet. If the live pipeline is ever down for a while, the map keeps working but may show slightly
-stale data until the fallback is manually regenerated (ask Claude to pull the current Sheet data
-and rebuild `index.html`'s embedded arrays, the same way this version was built).
-
 ## Regulation categories
 Moratorium, Ordinance, Pending/Proposed (per supervisor direction, "Ban" was dropped as a category
 since no real entries used it; "Other" was later removed too, since it was redundant with the gray
@@ -129,21 +124,6 @@ words. Every other popup field (Size, Developer, Planning & zoning, Utility stat
 Completion date, Tenant, Duration) is capped at one sentence, 20 words or fewer. When something
 important doesn't fit in that space, it goes in Notes instead, not into the field itself. The
 idea: fields stay scannable, and anyone who wants more detail can check the source link.
-
-## Color palette
-Regulation types: Moratorium is blue, Ordinance is turquoise, Pending/Proposed is crimson.
-Every color on the map, including regulation types, county states, project stages, transmission
-lines, and gas pipelines, was checked pairwise for hue/lightness separation to avoid look-alike
-colors. See git history for the specific fixes made. Both Ordinance and Pending/Proposed were
-originally shades of green, colliding with the unrelated project-stage "Rumored" green on a
-different map layer. Fixing that took several iterations, checked with actual hue-angle and
-RGB-distance math each time rather than just eyeballing it: Ordinance went green (too close to
-Rumored) → violet (too close to Moratorium's blue and the Proposed-stage indigo, still in the
-same blue-purple hue family) → turquoise, chosen after mapping every hue currently in use and
-picking the one genuinely open gap on the color wheel (between green at 142° and blue at 202°).
-Pending/Proposed went green (same original problem) → vermillion → gold (both too close to the
-existing amber "city-only" color) → crimson, chosen after checking worst-case RGB distance
-against the full palette.
 
 ## General colocation/hosting listing (toggleable layer, off by default)
 "DC from datacentermap.com" shows 25 facilities pulled from all 12 of datacentermap.com's
