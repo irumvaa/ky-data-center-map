@@ -88,6 +88,14 @@ Also handles:
   looked at regulation records for that county. Now it checks regulations, projects, and the
   directory layer, so e.g. Jessamine County (which has no tracked regulation or project) still
   surfaces when searched, because KUSI Data Center is there.
+- **"County" suffix**: "Boyd County" matches the same things as "Boyd" alone. The word "county"
+  is stripped as filler wherever search terms are used, not just for the county name itself.
+  Previously this only worked by accident when "county" happened to appear in a matched note
+  ("Fayette County" worked, most others didn't, tested and fixed).
+- **Minimum query length**: suggestions only appear once you've typed at least 2 characters. A
+  single letter matches almost any text as a substring, so typing "a" was flooding the dropdown
+  with nearly the entire map (all 38 relevant counties, all 27 projects, all 25 facilities)
+  before this was added.
 
 ## Popup fields
 Regulations: Location, Type, Duration + Expiration (moratoria only), Source. (No individual
