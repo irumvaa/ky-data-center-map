@@ -147,17 +147,17 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 </div>
 <div class="controls">
   <span class="ctrl-label">Regulation:</span>
-  <button class="pill active" id="btn-reg-all" onclick="setRegFilter('all')">All</button>
-  <button class="pill" id="btn-reg-pending" onclick="setRegFilter('pending')"><span class="dot" style="background:#DC2626"></span>Pending/Proposed</button>
-  <button class="pill" id="btn-reg-moratorium" onclick="setRegFilter('moratorium')"><span class="dot" style="background:#0072B2"></span>Moratorium</button>
-  <button class="pill" id="btn-reg-ordinance" onclick="setRegFilter('ordinance')"><span class="dot" style="background:#2DD4BF"></span>Ordinance</button>
+  <button class="pill active" id="btn-reg-all" onclick="setRegFilter('all')">All (<span id="cnt-reg-all"></span>)</button>
+  <button class="pill" id="btn-reg-pending" onclick="setRegFilter('pending')"><span class="dot" style="background:#DC2626"></span>Pending/Proposed (<span id="cnt-reg-pending"></span>)</button>
+  <button class="pill" id="btn-reg-moratorium" onclick="setRegFilter('moratorium')"><span class="dot" style="background:#0072B2"></span>Moratorium (<span id="cnt-reg-moratorium"></span>)</button>
+  <button class="pill" id="btn-reg-ordinance" onclick="setRegFilter('ordinance')"><span class="dot" style="background:#2DD4BF"></span>Ordinance (<span id="cnt-reg-ordinance"></span>)</button>
   <div class="divider"></div>
   <span class="ctrl-label">Projects:</span>
-  <button class="pill active" id="btn-proj-show" onclick="toggleProjects()">Show projects</button>
-  <button class="pill" id="btn-stage-rumored" onclick="toggleStage('Rumored')"><span class="pill-pin" id="pin-rumored"></span>Rumored</button>
-  <button class="pill" id="btn-stage-proposed" onclick="toggleStage('Proposed')"><span class="pill-pin" id="pin-proposed"></span>Proposed</button>
-  <button class="pill" id="btn-stage-operating" onclick="toggleStage('Operating')"><span class="pill-pin" id="pin-operating"></span>Operating</button>
-  <button class="pill" id="btn-other-dc" onclick="toggleOtherDC()"><span class="pill-pin-square" id="pin-other-dc"></span>DC from datacentermap.com</button>
+  <button class="pill active" id="btn-proj-show" onclick="toggleProjects()">Show projects (<span id="cnt-proj-all"></span>)</button>
+  <button class="pill" id="btn-stage-rumored" onclick="toggleStage('Rumored')"><span class="pill-pin" id="pin-rumored"></span>Rumored (<span id="cnt-stage-rumored"></span>)</button>
+  <button class="pill" id="btn-stage-proposed" onclick="toggleStage('Proposed')"><span class="pill-pin" id="pin-proposed"></span>Proposed (<span id="cnt-stage-proposed"></span>)</button>
+  <button class="pill" id="btn-stage-operating" onclick="toggleStage('Operating')"><span class="pill-pin" id="pin-operating"></span>Operating (<span id="cnt-stage-operating"></span>)</button>
+  <button class="pill" id="btn-other-dc" onclick="toggleOtherDC()"><span class="pill-pin-square" id="pin-other-dc"></span>DC from datacentermap.com (<span id="cnt-other-dc"></span>)</button>
   <div class="divider"></div>
   <span class="ctrl-label">Layers:</span>
   <button class="pill" id="btn-transmission" onclick="toggleTransmission()">Show transmission lines</button>
@@ -165,10 +165,10 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <span class="badge-count" id="count">0 shown</span>
 </div>
 <div class="legend">
-  <div class="leg-item"><span class="leg-box" style="background:#4338CA;border:2px dashed #2c2a8c"></span>County-wide (exact site unknown)</div>
-  <div class="leg-item"><span class="leg-box" style="background:rgba(230,159,0,0.3);border:1.5px solid #a66d00"></span>City-level only (no county-wide reg)</div>
-  <div class="leg-item"><span class="leg-box" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px);border:1.5px solid #555"></span>Both county-wide AND city-level</div>
-  <div class="leg-item"><span class="leg-box" style="background:rgba(153,153,153,0.15);border:1.5px solid #7a7a7a"></span>No known regulation</div>
+  <div class="leg-item"><span class="leg-box" style="background:#4338CA;border:2px dashed #2c2a8c"></span>County-wide (exact site unknown) (<span id="cnt-leg-countywide"></span>)</div>
+  <div class="leg-item"><span class="leg-box" style="background:rgba(230,159,0,0.3);border:1.5px solid #a66d00"></span>City-level only (no county-wide reg) (<span id="cnt-leg-cityonly"></span>)</div>
+  <div class="leg-item"><span class="leg-box" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px);border:1.5px solid #555"></span>Both county-wide AND city-level (<span id="cnt-leg-both"></span>)</div>
+  <div class="leg-item"><span class="leg-box" style="background:rgba(153,153,153,0.15);border:1.5px solid #7a7a7a"></span>No known regulation (<span id="cnt-leg-none"></span>)</div>
   <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc"></span>datacentermap.com listing</div>
   <div class="leg-item"><span class="leg-line" style="background:#2c3e50"></span>Transmission line</div>
   <div class="leg-item"><span class="leg-line" style="background:repeating-linear-gradient(90deg,#8B5A2B 0 6px,transparent 6px 9px)"></span>Gas pipeline</div>
@@ -729,10 +729,32 @@ function updateCount(){
   document.getElementById('count').textContent = total + ' shown' + (selectedCounty? ' in '+selectedCounty+' County':'');
 }
 
+function updateFilterCounts(){
+  document.getElementById('cnt-reg-all').textContent = regulations.length;
+  document.getElementById('cnt-reg-pending').textContent = regulations.filter(r=>r.type==='Pending/Proposed').length;
+  document.getElementById('cnt-reg-moratorium').textContent = regulations.filter(r=>r.type==='Moratorium').length;
+  document.getElementById('cnt-reg-ordinance').textContent = regulations.filter(r=>r.type==='Ordinance').length;
+
+  document.getElementById('cnt-proj-all').textContent = projects.length;
+  document.getElementById('cnt-stage-rumored').textContent = projects.filter(p=>p.stage==='Rumored').length;
+  document.getElementById('cnt-stage-proposed').textContent = projects.filter(p=>p.stage==='Proposed').length;
+  document.getElementById('cnt-stage-operating').textContent = projects.filter(p=>p.stage==='Operating').length;
+  document.getElementById('cnt-other-dc').textContent = otherDataCenters.length;
+
+  // Reuses the same county-state sets computeRegStats() already built, so
+  // these counts can never drift out of sync with what's actually shaded
+  // on the map.
+  document.getElementById('cnt-leg-countywide').textContent = projects.filter(p=>p.countyWide).length;
+  document.getElementById('cnt-leg-cityonly').textContent = cityOnlyCounties.size;
+  document.getElementById('cnt-leg-both').textContent = bothLevelCounties.size;
+  document.getElementById('cnt-leg-none').textContent = allCounties.length - regCountiesSet.size;
+}
+
 function renderAll(){
   computeRegStats();
   refreshCountyLayer();
   updateStatsBar();
+  updateFilterCounts();
   renderRegulations();
   renderProjects();
   renderOtherDataCenters();
