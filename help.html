@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>How to use the Kentucky Data Center Map</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh;line-height:1.6}
+header{background:#0f3d2e;color:#fff;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+header h1{font-size:19px;font-weight:600;line-height:1.3}
+header a{color:#c9b3dd;font-size:13px;font-weight:600;text-decoration:none;background:rgba(255,255,255,0.1);padding:8px 16px;border-radius:20px;white-space:nowrap}
+header a:hover{background:rgba(255,255,255,0.18)}
+main{max-width:760px;margin:0 auto;padding:32px 24px 60px}
+h2{font-size:16px;color:#0f3d2e;margin:36px 0 12px;padding-bottom:8px;border-bottom:1.5px solid #e3d8ef}
+h2:first-of-type{margin-top:0}
+p{font-size:14px;color:#3a3550;margin-bottom:10px}
+.swatch-row{display:flex;align-items:center;gap:10px;margin:10px 0;font-size:13.5px;color:#3a3550}
+.swatch{width:16px;height:16px;border-radius:4px;flex-shrink:0;border:1.5px solid rgba(0,0,0,0.2)}
+.swatch-line{width:24px;height:3px;flex-shrink:0}
+.pin-shape{width:14px;height:18px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);flex-shrink:0;border:1.5px solid rgba(0,0,0,0.3)}
+code{background:#eee;padding:1px 6px;border-radius:4px;font-size:12.5px}
+.card{background:#fff;border:1px solid #e3d8ef;border-radius:10px;padding:16px 20px;margin:14px 0}
+footer{text-align:center;font-size:12px;color:#888;padding:20px}
+</style>
+</head>
+<body>
+<header>
+  <h1>How to use the Kentucky Data Center Map</h1>
+  <a href="https://irumvaa.github.io/ky-data-center-map/">&larr; Back to the map</a>
+</header>
+<main>
+
+<h2>What the colors mean</h2>
+<p>County shading shows local regulations:</p>
+<div class="swatch-row"><span class="swatch" style="background:#0072B2"></span> Moratorium</div>
+<div class="swatch-row"><span class="swatch" style="background:#2DD4BF"></span> Ordinance</div>
+<div class="swatch-row"><span class="swatch" style="background:#DC2626"></span> Pending/Proposed legislation</div>
+<div class="swatch-row"><span class="swatch" style="background:rgba(230,159,0,0.3);border-color:#a66d00"></span> Amber = a city inside has a regulation, but the county doesn't</div>
+<div class="swatch-row"><span class="swatch" style="background:rgba(153,153,153,0.15);border-color:#7a7a7a"></span> Gray = nothing on file at any level</div>
+<div class="swatch-row"><span class="swatch" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px)"></span> Diagonal stripes = both a county-wide and a separate city-level regulation</div>
+
+<p style="margin-top:16px">Project pins are colored by stage:</p>
+<div class="swatch-row"><span class="pin-shape" style="background:#16A34A;border-color:#16A34A"></span> Rumored</div>
+<div class="swatch-row"><span class="pin-shape" style="background:#4338CA;border-color:#4338CA"></span> Proposed</div>
+<div class="swatch-row"><span class="pin-shape" style="background:#D1239D;border-color:#D1239D"></span> Operating</div>
+
+<h2>What the icons mean</h2>
+<div class="card">
+<p><strong>Teardrop pins</strong> mark individual data center projects. A solid pin means the exact site is known. A dashed pin means only the county is known so far, not the specific address.</p>
+<p style="margin-top:10px"><strong>Gray squares</strong> mark listings from the separate "DC from datacentermap.com" layer, described below.</p>
+</div>
+
+<h2>About the "DC from datacentermap.com" layer</h2>
+<div class="card">
+<p>This is a separate, toggleable layer pulled from datacentermap.com's general directory of Kentucky data center facilities. Most of these are ordinary commercial colocation and hosting providers that have existed for years, not part of the AI/hyperscale story the rest of this map tracks.</p>
+<p style="margin-top:10px">It's kept as its own layer, off by default, rather than mixed into the main dataset, so it's always clear which pins are sourced, vetted community and regulatory data, and which are a general industry listing. Square markers in this layer are colored by status the same way project pins are: indigo for Proposed, magenta for Operating, orange for under construction, and gray where the status is unclear.</p>
+</div>
+
+<h2>How to use the search bar</h2>
+<div class="card">
+<p>Type a county name, city name, project name, developer, or keyword like "moratorium" or a megawatt figure. Typing a city (even one with no tracked project of its own, like Wilmore) resolves to its county and zooms straight to that city.</p>
+<p style="margin-top:10px">A few things it handles automatically: minor typos, "County" as a suffix ("Boyd County" works the same as "Boyd"), units written different ways ("500mw" or "500 MW"), and phrases like "county wide" or "city level" to find every county in that state.</p>
+</div>
+
+<h2>How to use the toggles</h2>
+<div class="card">
+<p>The <strong>Regulation</strong> row filters county shading by type. The <strong>Projects</strong> row filters pins by stage, and includes the datacentermap.com layer toggle. The <strong>Layers</strong> row adds live transmission line and gas pipeline data from public government sources.</p>
+<p style="margin-top:10px">Numbers in parentheses on each button show how many match that filter right now.</p>
+</div>
+
+</main>
+<footer>Kentucky Data Center Map &middot; Mountain Association</footer>
+</body>
+</html>
