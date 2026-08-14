@@ -58,7 +58,7 @@
 
 // ====== CONFIG, fill these in ======
 const SHEET_ID = 'PASTE_YOUR_SHEET_ID_HERE';
-const NOTIFY_EMAIL = 'energy@mtassociation.org';
+const NOTIFY_EMAIL = 'energy@mtassociation.org,chris@mtassociation.org';
 
 // ====== SHEET TAB NAMES ======
 const REG_SHEET = 'Regulations';
