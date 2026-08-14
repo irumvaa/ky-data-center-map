@@ -66,6 +66,7 @@ const PROJ_SHEET = 'Projects';
 const DC_SHEET = 'DCFacilities';
 const PENDING_SHEET = 'PendingReview';
 const CENTROID_SHEET = 'CountyCentroids';
+const HELP_SHEET = 'HelpContent';
 
 const STATUS_PENDING = 'Pending Review';
 const STATUS_PUBLISHED = 'Published';
@@ -76,9 +77,35 @@ const PENDING_ROW_COLOR = '#fff7cc'; // light yellow, so new rows stand out for 
 // WEB APP ENTRY POINT
 // ==========================================================================
 function doGet(e) {
+  const content = e.parameter && e.parameter.content;
+  if (content === 'help') {
+    return ContentService.createTextOutput(JSON.stringify(buildHelpContent()))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   const data = buildMapData();
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Reads the HelpContent tab (Key, Text columns) into a flat {key: text}
+ * object, this is what help.html fetches to let its wording be edited
+ * from the Sheet instead of the page's own HTML. The page's structure
+ * (headings, color swatches, layout) stays in help.html's code on
+ * purpose, only the explanatory prose moves to the Sheet.
+ */
+function buildHelpContent() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(HELP_SHEET);
+  if (!sheet) return {};
+  const values = sheet.getDataRange().getValues();
+  const out = {};
+  for (let i = 1; i < values.length; i++) {
+    const key = values[i][0];
+    const text = values[i][1];
+    if (key) out[key] = text;
+  }
+  return out;
 }
 
 function buildMapData() {

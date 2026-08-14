@@ -22,6 +22,7 @@ function setupSheetAndMigrateData() {
   setupDCFacilitiesTab(ss);
   setupPendingReviewTab(ss);
   setupCountyCentroidsTab(ss);
+  setupHelpContentTab(ss);
   Logger.log('Setup and migration complete.');
 }
 
@@ -294,4 +295,33 @@ function setupCountyCentroidsTab(ss) {
     ["harlan", 36.8593, -83.2229],
   ];
   if (rows.length) sheet.getRange(2, 1, rows.length, 3).setValues(rows);
+}
+
+function setupHelpContentTab(ss) {
+  let sheet = ss.getSheetByName(HELP_SHEET);
+  if (sheet) ss.deleteSheet(sheet);
+  sheet = ss.insertSheet(HELP_SHEET);
+  sheet.appendRow(['Key', 'Text']);
+  const rows = [
+    ["colors-moratorium", "a temporary pause on new data center construction"],
+    ["colors-ordinance", "a permanent zoning rule"],
+    ["colors-pending", "not yet passed, still under consideration"],
+    ["colors-amber", "a city inside has a regulation, but the county doesn't"],
+    ["colors-gray", "nothing on file at any level"],
+    ["colors-stripes", "both a county-wide and a separate city-level regulation"],
+    ["icons-pins", "<strong>Teardrop pins</strong> mark individual data center projects. A solid pin means the exact site is known. A dashed pin means only the county is known so far, not the specific address."],
+    ["icons-squares", "<strong>Gray squares</strong> mark listings from the separate \"DC from datacentermap.com\" layer, described below."],
+    ["clicking-popups", "Click any county or pin to open a popup with the full details on file and a link to the source. If a popup is long, it scrolls instead of getting cut off, so there's no hidden information below the fold."],
+    ["clicking-notavailable", "When a field like Utility status or Tenant says <strong>\"Not available\"</strong>, that means it genuinely isn't public yet, not that something's missing by mistake. This map doesn't guess or fill in gaps."],
+    ["dclayer-p1", "This is a separate, toggleable layer pulled from datacentermap.com's general directory of Kentucky data center facilities. Most of these are ordinary commercial colocation and hosting providers that have existed for years, not part of the AI/hyperscale story the rest of this map tracks."],
+    ["dclayer-p2", "It's kept as its own layer, off by default, rather than mixed into the main dataset, so it's always clear which pins are sourced, vetted community and regulatory data, and which are a general industry listing. Square markers in this layer are colored by status the same way project pins are: indigo for Proposed, magenta for Operating, orange for under construction, and gray where the status is unclear."],
+    ["search-p1", "Type a county name, city name, project name, developer, or keyword like \"moratorium\" or a megawatt figure. Typing a city (even one with no tracked project of its own, like Wilmore) resolves to its county and zooms straight to that city."],
+    ["search-p2", "A few things it handles automatically: minor typos, \"County\" as a suffix (\"Boyd County\" works the same as \"Boyd\"), units written different ways (\"500mw\" or \"500 MW\"), and phrases like \"county wide\" or \"city level\" to find every county in that state."],
+    ["toggles-p1", "The <strong>Regulation</strong> row filters county shading by type. The <strong>Projects</strong> row filters pins by stage, and includes the datacentermap.com layer toggle. The <strong>Layers</strong> row adds live transmission line and gas pipeline data from public government sources."],
+    ["toggles-p2", "Numbers in parentheses on each button show how many match that filter right now. The three numbers at the top of the page (counties with regulations, counties with none, and projects tracked) update the same way, live, as entries are added. When the datacentermap.com layer is on, that top project count shows the combined total, with a breakdown in parentheses of how many are tracked projects versus directory listings."],
+    ["datacurrency-p1", "Regulations, projects, and the datacentermap.com layer are a periodically updated snapshot, not a live feed, someone checks the news and public filings and updates the map by hand. The two exceptions are the transmission line and gas pipeline layers, which fetch fresh data straight from public government sources every time you turn them on."],
+    ["datacurrency-p2", "Even those two have limits worth knowing: about half of the transmission line data is missing voltage information at the source, and the gas pipeline dataset is a snapshot from January 2020, over six years old. Treat it as historically informative, not current."],
+    ["report-p1", "Use the links in the banner above the map to share new information or report a problem, or reach the Mountain Association directly at <a href=\"mailto:energy@mtassociation.org\" style=\"color:#7d3c98;font-weight:600;\">energy@mtassociation.org</a>."],
+  ];
+  if (rows.length) sheet.getRange(2, 1, rows.length, 2).setValues(rows);
 }
