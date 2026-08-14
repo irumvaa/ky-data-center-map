@@ -2,6 +2,8 @@
 
 **Live map: https://irumvaa.github.io/ky-data-center-map/**
 **Help page: https://irumvaa.github.io/ky-data-center-map/help.html**
+**Add new information: https://docs.google.com/forms/d/e/1FAIpQLSd58xrJlaw8Q4p_KKFLgcYCe-b4aMT24aTg-RXbaSpQYIkjGA/viewform**
+**Report a problem: https://docs.google.com/forms/d/e/1FAIpQLSdesw2Kg_b3gLVBDlniFzPOf9B7ms_Qsz_Ar0fnIjoIYCh3jg/viewform**
 
 Interactive map of proposed Kentucky data center projects, local moratoria/ordinances/pending
 legislation, and major transmission lines and gas pipelines. Built in the same branded style as
