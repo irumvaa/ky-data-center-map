@@ -408,7 +408,12 @@ function buildSearchIndex(){
 }
 buildSearchIndex();
 
-function searchTerms(q){ return normalizeSearchText(q).split(/\s+/).filter(Boolean); }
+function searchTerms(q){
+  // "county" is filler in a search context ("Boyd County" should match the
+  // same things as "Boyd") — strip it as a token everywhere terms are used,
+  // rather than requiring every matched blob to literally contain the word.
+  return normalizeSearchText(q).split(/\s+/).filter(Boolean).filter(t=>t!=='county');
+}
 function blobMatchesAll(blob, terms){ return terms.every(t=>fuzzyIncludes(blob, t)); }
 
 function updateStatsBar(){
@@ -874,23 +879,28 @@ function onSearchInput(){
   const q=raw.toLowerCase();
   document.getElementById('search-clear').classList.toggle('visible', q.length>0);
   if(!q){ closeSuggestions(); return; }
+  if(q.length < 2){ closeSuggestions(); return; } // a single character matches almost everything — wait for a real query
   const terms = searchTerms(q);
+  // For the county name-prefix check specifically, strip a trailing "county"
+  // (with or without a space before it) so "Boyd County" prefix-matches
+  // "Boyd" the same way "Boyd" alone does.
+  const qForCountyPrefix = q.replace(/\s*county\s*$/, '').trim() || q;
 
   const countyMatches = allCounties.filter(c=>{
-    if(c.toLowerCase().startsWith(q)) return true;
+    if(c.toLowerCase().startsWith(qForCountyPrefix)) return true;
     const blob = countyContentBlob[normKey(c)];
-    return blob && blobMatchesAll(blob, terms);
+    return blob && terms.length && blobMatchesAll(blob, terms);
   });
 
   const projMatches = projects.map((p,i)=>({p,i}))
-    .filter(o=>blobMatchesAll(o.p._blob, terms));
+    .filter(o=>terms.length && blobMatchesAll(o.p._blob, terms));
 
   const regMatches = regulations.map((r,i)=>({r,i}))
-    .filter(o=>blobMatchesAll(o.r._blob, terms))
-    .filter(o=>!(o.r.county.toLowerCase().startsWith(q) && terms.length===1)); // don't duplicate a plain county-name search
+    .filter(o=>terms.length && blobMatchesAll(o.r._blob, terms))
+    .filter(o=>!(o.r.county.toLowerCase().startsWith(qForCountyPrefix) && terms.length===1)); // don't duplicate a plain county-name search
 
   const facilityMatches = otherDataCenters.map((d,i)=>({d,i}))
-    .filter(o=>blobMatchesAll(o.d._blob, terms));
+    .filter(o=>terms.length && blobMatchesAll(o.d._blob, terms));
 
   // A plain city-name search (e.g. "Wilmore", "Prospect") — surfaced as its
   // own suggestion so typing a city always finds it, resolving straight to
