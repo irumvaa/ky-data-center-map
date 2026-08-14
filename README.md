@@ -220,10 +220,13 @@ SetupSheetAndMigrateData.gs), see that folder for setup instructions.
 
 **Nothing submitted goes live automatically.** New regulations and projects land in their sheet
 tab marked Status = "Pending Review" (highlighted light yellow), and only appear on the map once
-someone manually flips that cell to "Published." Reported corrections to existing entries land
+someone flips that cell to "Published." Reported corrections to existing entries land
 in a separate PendingReview tab for the same reason, applying them means editing the actual row
 by hand once reviewed. Data-validation dropdowns on the Level/Type/Stage/Status columns help
-prevent typos there from silently breaking the map's coloring logic.
+prevent typos there from silently breaking the map's coloring logic. A "Data Center Map Admin"
+menu inside the Sheet (Review next pending item) walks through pending submissions one at a
+time, showing the real submitted fields and letting you Approve, Reject, or Skip right there,
+so nobody has to scroll hunting for the yellow rows themselves.
 
 This map's own code already has the fallback-then-live-refresh scaffolding built in:
 
