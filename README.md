@@ -112,16 +112,19 @@ important doesn't fit in that space, it goes in Notes instead, not into the fiel
 idea: fields stay scannable, and anyone who wants more detail can check the source link.
 
 ## Color palette
-Regulation types: Moratorium is blue, Ordinance is violet, Pending/Proposed is crimson. Every
-color on the map, including regulation types, county states, project stages, transmission lines,
-and gas pipelines, was checked pairwise for hue/lightness separation to avoid look-alike colors.
-See git history for the specific fixes made (e.g. Operating was originally green, which was too
-close to Ordinance's original teal; project stage colors were originally three shades of purple,
-which read as near-identical from a distance; Ordinance and Pending/Proposed were both originally
-shades of green, which collided with the unrelated project-stage "Rumored" green on a different
-map layer, so Ordinance became violet. Pending/Proposed then went through two more attempts,
-vermillion and gold, both too close to the existing amber "city-only" color, before landing on
-crimson after checking worst-case RGB distance against the entire 10-color palette).
+Regulation types: Moratorium is blue, Ordinance is turquoise, Pending/Proposed is crimson.
+Every color on the map, including regulation types, county states, project stages, transmission
+lines, and gas pipelines, was checked pairwise for hue/lightness separation to avoid look-alike
+colors. See git history for the specific fixes made. Both Ordinance and Pending/Proposed were
+originally shades of green, colliding with the unrelated project-stage "Rumored" green on a
+different map layer. Fixing that took several iterations, checked with actual hue-angle and
+RGB-distance math each time rather than just eyeballing it: Ordinance went green (too close to
+Rumored) → violet (too close to Moratorium's blue and the Proposed-stage indigo, still in the
+same blue-purple hue family) → turquoise, chosen after mapping every hue currently in use and
+picking the one genuinely open gap on the color wheel (between green at 142° and blue at 202°).
+Pending/Proposed went green (same original problem) → vermillion → gold (both too close to the
+existing amber "city-only" color) → crimson, chosen after checking worst-case RGB distance
+against the full palette.
 
 ## General colocation/hosting listing (toggleable layer, off by default)
 "DC from datacentermap.com" shows 25 facilities pulled from all 12 of datacentermap.com's
