@@ -169,7 +169,10 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <div class="leg-item"><span class="leg-box" style="background:rgba(230,159,0,0.3);border:1.5px solid #a66d00"></span>City-level only (no county-wide reg) (<span id="cnt-leg-cityonly"></span>)</div>
   <div class="leg-item"><span class="leg-box" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px);border:1.5px solid #555"></span>Both county-wide AND city-level (<span id="cnt-leg-both"></span>)</div>
   <div class="leg-item"><span class="leg-box" style="background:rgba(153,153,153,0.15);border:1.5px solid #7a7a7a"></span>No known regulation (<span id="cnt-leg-none"></span>)</div>
-  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc"></span>datacentermap.com listing</div>
+  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc"></span>datacentermap.com: Operational</div>
+  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-proposed"></span>datacentermap.com: Proposed</div>
+  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-construction"></span>datacentermap.com: Under construction</div>
+  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-unknown"></span>datacentermap.com: Unknown/unconfirmed</div>
   <div class="leg-item"><span class="leg-line" style="background:#2c3e50"></span>Transmission line</div>
   <div class="leg-item"><span class="leg-line" style="background:repeating-linear-gradient(90deg,#8B5A2B 0 6px,transparent 6px 9px)"></span>Gas pipeline</div>
   <span class="leg-credit">Data: KY DC tracking sheets, Kentucky Lantern, HIFLD (transmission, ~2025) &amp; EIA (pipelines, 2020 snapshot) · Map: OpenStreetMap</span>
@@ -658,22 +661,36 @@ function projectIcon(p){
 // Distinct square/chip marker for the general datacentermap.com directory
 // layer — deliberately different from the teardrop project pins so it
 // reads as "reference data," not a tracked, sourced community story.
-function otherDCIconSvg(){
+// Classifies the free-text `status` field from the directory-layer
+// spreadsheet into a color. Status text is inconsistent ("Operational",
+// "Operational (built 2011)", "Not confirmed in latest source"...), so this
+// matches on keywords rather than an exact enum, with a safe default for
+// anything unrecognized.
+function otherDCStatusColor(status){
+  const s = (status||'').toLowerCase();
+  if(s.includes('proposed')) return '#2563EB'; // blue
+  if(s.includes('construction')) return '#EA580C'; // orange
+  if(s.includes('unknown') || s.includes('not confirmed')) return '#78716C'; // muted stone, signals uncertainty
+  if(s.includes('operational')) return '#64748B'; // steel gray — the default, most common status
+  return '#64748B'; // fallback for anything unrecognized
+}
+function otherDCIconSvg(color){
+  const fill = color || '#64748B';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
-    <rect x="1" y="1" width="16" height="16" rx="3" fill="#64748B" stroke="#2b2b2b" stroke-width="1.2"/>
+    <rect x="1" y="1" width="16" height="16" rx="3" fill="${fill}" stroke="#2b2b2b" stroke-width="1.2"/>
     <rect x="5" y="4.5" width="8" height="9" rx="1" fill="none" stroke="white" stroke-width="1.1"/>
     <line x1="5" y1="7.5" x2="13" y2="7.5" stroke="white" stroke-width="0.9"/>
     <line x1="5" y1="10.5" x2="13" y2="10.5" stroke="white" stroke-width="0.9"/>
   </svg>`;
 }
-function otherDCIcon(){
-  return L.divIcon({className:'', html:otherDCIconSvg(), iconSize:[18,18], iconAnchor:[9,9], popupAnchor:[0,-11]});
+function otherDCIcon(d){
+  return L.divIcon({className:'', html:otherDCIconSvg(otherDCStatusColor(d.status)), iconSize:[18,18], iconAnchor:[9,9], popupAnchor:[0,-11]});
 }
 function renderOtherDataCenters(){
   if(otherDCLayer) map.removeLayer(otherDCLayer);
   if(!showOtherDC){ otherDCLayer = null; return; }
   const markers = otherDataCenters.map(d =>
-    L.marker([d.lat, d.lng], {icon: otherDCIcon()}).bindPopup(otherDCPopup(d), {maxWidth: 280})
+    L.marker([d.lat, d.lng], {icon: otherDCIcon(d)}).bindPopup(otherDCPopup(d), {maxWidth: 280})
   );
   otherDCLayer = L.layerGroup(markers).addTo(map);
 }
@@ -1121,7 +1138,10 @@ document.getElementById('pin-rumored').innerHTML = projectIconSvg('#16A34A', fal
 document.getElementById('pin-proposed').innerHTML = projectIconSvg('#4338CA', false);
 document.getElementById('pin-operating').innerHTML = projectIconSvg('#D1239D', false);
 document.getElementById('pin-other-dc').innerHTML = otherDCIconSvg();
-document.getElementById('leg-other-dc').innerHTML = otherDCIconSvg();
+document.getElementById('leg-other-dc').innerHTML = otherDCIconSvg(otherDCStatusColor('Operational'));
+document.getElementById('leg-other-dc-proposed').innerHTML = otherDCIconSvg(otherDCStatusColor('Proposed'));
+document.getElementById('leg-other-dc-construction').innerHTML = otherDCIconSvg(otherDCStatusColor('Under construction'));
+document.getElementById('leg-other-dc-unknown').innerHTML = otherDCIconSvg(otherDCStatusColor('Unknown'));
 
 // If a Google Apps Script endpoint is ever configured above
 // (DATA_SOURCE_URL), quietly try to fetch fresher, already-reviewed
