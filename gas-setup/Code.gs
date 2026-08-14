@@ -219,137 +219,116 @@ function formatDateField(val) {
 // ==========================================================================
 /**
  * Attach as an "On form submit" trigger on the ADD form (see setup notes
- * at top). Expects that form's first question to be named exactly "What
- * would you like to add?" with the 2 options from createAddForm() in
- * SetupForm.gs.
+ * at top).
+ *
+ * Reads `e.values`, the raw submitted answers as a plain array in fixed
+ * column order, rather than `e.namedValues` (keyed by question title).
+ * This form has two branches (Regulation, Project) that each need their
+ * own "County," "Address," etc. questions, and Apps Script's namedValues
+ * can't disambiguate two items sharing an identical title, it silently
+ * reads the wrong one. Position never has that ambiguity, so this is
+ * immune to the whole class of bug regardless of how the form's
+ * questions happen to be worded or renamed.
+ *
+ * Column positions below match the exact order createAddForm() in
+ * SetupForm.gs creates its questions in. If that order is ever changed,
+ * these indices need updating to match.
  */
 function onAddFormSubmit(e) {
-  const responses = e.namedValues; // { "Question text": ["answer"] }
-  const action = getAnswer(responses, 'What would you like to add?');
+  const v = e.values;
+  const action = String(v[1] || '');
   const isRegulation = action.indexOf('A new Regulation') === 0;
   const isProject = action.indexOf('A new Project') === 0;
-
-  // The Regulation and Project branches each have their own "County"
-  // question, since a single shared question title breaks Apps Script's
-  // e.namedValues (it can't disambiguate two items with the identical
-  // title, and consistently reads the wrong one). Picking the right one
-  // by branch here, rather than assuming a plain "County" key exists.
-  const county = isRegulation
-    ? getAnswer(responses, 'County (for a Regulation)')
-    : getAnswer(responses, 'County (for a Project)');
-
-  let geocoded = null;
-  const address = isRegulation
-    ? getAnswer(responses, 'Address (optional, for a Regulation)')
-    : getAnswer(responses, 'Address (optional, for a Project)');
-  const mapsLink = getAnswer(responses, 'Google Maps link (optional)'); // Project branch only, always unique
-  if (address || mapsLink) {
-    geocoded = geocodeFromAddressOrLink(address, mapsLink);
-  }
-  if (!geocoded && county) {
-    geocoded = countyCentroid(county);
-  }
 
   const ss = SpreadsheetApp.openById(SHEET_ID);
 
   if (isRegulation) {
-    appendRegulation(ss, responses, geocoded);
-    notifySubmission('New regulation submitted, pending review', responses);
-    const type = getAnswer(responses, 'Type');
-    if (type && type.toLowerCase().indexOf('moratorium') !== -1) {
-      notifyMoratoriumAdded(responses);
+    const reg = {
+      county: cell(v, 2), city: cell(v, 3), level: cell(v, 4), type: cell(v, 5),
+      startDate: cell(v, 6), duration: cell(v, 7), expiration: cell(v, 8),
+      address: cell(v, 9), sources: cell(v, 10), notes: cell(v, 11),
+    };
+    let geocoded = reg.address ? geocodeFromAddressOrLink(reg.address, '') : null;
+    if (!geocoded && reg.county) geocoded = countyCentroid(reg.county);
+    appendRegulation(ss, reg, geocoded);
+    notifySubmission('New regulation submitted, pending review', reg);
+    if (reg.type && reg.type.toLowerCase().indexOf('moratorium') !== -1) {
+      notifyMoratoriumAdded(reg);
     }
   } else if (isProject) {
-    appendProject(ss, responses, geocoded);
-    notifySubmission('New project submitted, pending review', responses);
+    const proj = {
+      name: cell(v, 12), county: cell(v, 13), city: cell(v, 14), address: cell(v, 15),
+      mapsLink: cell(v, 16), size: cell(v, 17), developer: cell(v, 18), pz: cell(v, 19),
+      utility: cell(v, 20), tariff: cell(v, 21), stage: cell(v, 22),
+      completionDate: cell(v, 23), tenant: cell(v, 24), sources: cell(v, 25), notes: cell(v, 26),
+    };
+    let geocoded = (proj.address || proj.mapsLink) ? geocodeFromAddressOrLink(proj.address, proj.mapsLink) : null;
+    if (!geocoded && proj.county) geocoded = countyCentroid(proj.county);
+    appendProject(ss, proj, geocoded);
+    notifySubmission('New project submitted, pending review', proj);
   }
 }
 
 /**
- * Attach as an "On form submit" trigger on the REPORT form (see setup
- * notes at top). Expects that form's first question to be named exactly
- * "What would you like to report a change to?" with the 3 options from
- * createReportForm() in SetupForm.gs.
+ * Same positional approach for the REPORT form, which has an even more
+ * pronounced version of the same problem: 3 branches (Regulation,
+ * Project, DC facility) all built from one shared helper
+ * (addChangeReportFields), so all 3 sets of questions have IDENTICAL
+ * titles. Column positions match the exact order createReportForm()
+ * creates its questions in.
  */
 function onReportFormSubmit(e) {
-  const responses = e.namedValues;
-  const action = getAnswer(responses, 'What would you like to report a change to?');
+  const v = e.values;
+  const action = String(v[1] || '');
   const ss = SpreadsheetApp.openById(SHEET_ID);
 
-  let targetType = '';
-  if (action.indexOf('A Regulation') === 0) targetType = 'Regulation';
-  else if (action.indexOf('A Project') === 0) targetType = 'Project';
-  else if (action.indexOf('A DC from datacentermap.com') === 0) targetType = 'DC facility';
+  let targetType = '', offset = -1;
+  if (action.indexOf('A Regulation') === 0) { targetType = 'Regulation'; offset = 2; }
+  else if (action.indexOf('A Project') === 0) { targetType = 'Project'; offset = 6; }
+  else if (action.indexOf('A DC from datacentermap.com') === 0) { targetType = 'DC facility'; offset = 10; }
   if (!targetType) return;
 
-  appendPendingReview(ss, targetType, responses);
-  notifySubmission('Change reported (' + targetType + '), pending review', responses);
+  const report = {
+    which: cell(v, offset), change: cell(v, offset + 1),
+    source: cell(v, offset + 2), email: cell(v, offset + 3),
+  };
+  appendPendingReview(ss, targetType, report);
+  notifySubmission('Change reported (' + targetType + '), pending review', report);
 }
 
-function getAnswer(responses, question) {
-  const val = responses[question];
-  return val && val[0] ? val[0] : '';
+function cell(values, index) {
+  const val = values[index];
+  return val === undefined || val === null ? '' : String(val).trim();
 }
 
-function appendRegulation(ss, r, geocoded) {
+function appendRegulation(ss, reg, geocoded) {
   const sheet = ss.getSheetByName(REG_SHEET);
   sheet.appendRow([
-    getAnswer(r, 'County (for a Regulation)'),
-    getAnswer(r, 'City (optional, for a Regulation)'),
-    getAnswer(r, 'Is this county-wide, or specific to one city within the county?'),
-    getAnswer(r, 'Type'),
-    getAnswer(r, 'Start date'),
-    getAnswer(r, 'Duration'),
-    getAnswer(r, 'Expiration date (if known)'),
-    getAnswer(r, 'Notes (for a Regulation)'),
-    geocoded ? geocoded.lat : '',
-    geocoded ? geocoded.lng : '',
-    getAnswer(r, 'Address (optional, for a Regulation)'),
-    getAnswer(r, 'Source(s), one or more links (for a Regulation)'),
-    STATUS_PENDING,
-    false,
+    reg.county, reg.city, reg.level, reg.type, reg.startDate, reg.duration,
+    reg.expiration, reg.notes,
+    geocoded ? geocoded.lat : '', geocoded ? geocoded.lng : '',
+    reg.address, reg.sources, STATUS_PENDING, false,
   ]);
   highlightLastRow(sheet);
 }
 
-function appendProject(ss, r, geocoded) {
+function appendProject(ss, proj, geocoded) {
   const sheet = ss.getSheetByName(PROJ_SHEET);
   sheet.appendRow([
-    getAnswer(r, 'Project name'),
-    getAnswer(r, 'City (optional, for a Project)'),
-    getAnswer(r, 'County (for a Project)'),
-    getAnswer(r, 'Address (optional, for a Project)'),
-    getAnswer(r, 'Size/Capacity'),
-    getAnswer(r, 'Developer'),
-    getAnswer(r, 'Planning & zoning status'),
-    getAnswer(r, 'Utility status'),
-    getAnswer(r, 'Tariff'),
-    getAnswer(r, 'Estimated completion date'),
-    getAnswer(r, 'Tenant'),
-    getAnswer(r, 'Source(s), one or more links (for a Project)'),
-    getAnswer(r, 'Notes (for a Project)'),
-    getAnswer(r, 'Stage'),
-    addressOrLinkPresent(r) ? 'FALSE' : 'TRUE', // countyWide: true only if no exact site given
-    geocoded ? geocoded.lat : '',
-    geocoded ? geocoded.lng : '',
+    proj.name, proj.city, proj.county, proj.address, proj.size, proj.developer,
+    proj.pz, proj.utility, proj.tariff, proj.completionDate, proj.tenant,
+    proj.sources, proj.notes, proj.stage,
+    (proj.address || proj.mapsLink) ? 'FALSE' : 'TRUE', // countyWide: true only if no exact site given
+    geocoded ? geocoded.lat : '', geocoded ? geocoded.lng : '',
     STATUS_PENDING,
   ]);
   highlightLastRow(sheet);
 }
 
-function addressOrLinkPresent(r) {
-  return !!(getAnswer(r, 'Address (optional, for a Project)') || getAnswer(r, 'Google Maps link (optional)'));
-}
-
-function appendPendingReview(ss, targetType, r) {
+function appendPendingReview(ss, targetType, report) {
   const sheet = ss.getSheetByName(PENDING_SHEET);
   sheet.appendRow([
-    new Date(),
-    targetType,
-    getAnswer(r, 'Which one? (name or county)'),
-    getAnswer(r, 'What needs to change?'),
-    getAnswer(r, 'Source for this correction'),
-    getAnswer(r, 'Your email (optional, in case we have questions)'),
+    new Date(), targetType, report.which, report.change, report.source, report.email,
   ]);
   highlightLastRow(sheet);
 }
@@ -490,8 +469,8 @@ function setRowStatus(sheet, rowIndex, statusCol, newStatus) {
 // ==========================================================================
 // EMAIL NOTIFICATIONS
 // ==========================================================================
-function notifySubmission(subjectPrefix, responses) {
-  const lines = Object.keys(responses).map(q => q + ': ' + responses[q][0]);
+function notifySubmission(subjectPrefix, fields) {
+  const lines = Object.keys(fields).map(k => k + ': ' + fields[k]);
   MailApp.sendEmail({
     to: NOTIFY_EMAIL,
     subject: 'KY Data Center Map, ' + subjectPrefix,
@@ -499,11 +478,11 @@ function notifySubmission(subjectPrefix, responses) {
   });
 }
 
-function notifyMoratoriumAdded(r) {
+function notifyMoratoriumAdded(reg) {
   MailApp.sendEmail({
     to: NOTIFY_EMAIL,
     subject: 'KY Data Center Map, new moratorium submitted (pending review)',
-    body: 'A new moratorium was just submitted for ' + getAnswer(r, 'County (for a Regulation)') +
+    body: 'A new moratorium was just submitted for ' + reg.county +
           ' County. It will not appear on the map until its row in the ' +
           'Regulations sheet is changed from "Pending Review" to "Published".',
   });
