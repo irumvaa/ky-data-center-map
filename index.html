@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Kentucky Data Centers: Projects &amp; Local Regulations</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh}
@@ -103,15 +101,6 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .pop-cta a{font-size:11.5px;color:#7d3c98;font-weight:600;text-decoration:none}
 .pop-cta a:hover{text-decoration:underline}
 .pop-links a{font-size:11px;color:#7d3c98;margin-right:8px}
-.marker-cluster{border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45)}
-.marker-cluster div{font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;margin:0;width:100%;height:100%;border-radius:50%}
-.marker-cluster span{line-height:1}
-.marker-cluster-small{background-color:rgba(142,68,173,0.35)}
-.marker-cluster-small div{background-color:rgba(142,68,173,0.95);color:#fff;font-weight:800}
-.marker-cluster-medium{background-color:rgba(125,60,152,0.35)}
-.marker-cluster-medium div{background-color:rgba(110,52,138,0.97);color:#fff;font-weight:800}
-.marker-cluster-large{background-color:rgba(95,40,125,0.35)}
-.marker-cluster-large div{background-color:rgba(80,30,108,0.98);color:#fff;font-weight:800}
 @media(max-width:600px){.leg-title{flex-basis:100%;white-space:normal}header{padding:12px 14px}#map{height:calc(100vh - 240px)}.controls{padding:8px 12px;gap:4px}.stats-bar{gap:10px;padding:6px 12px}}
 </style>
 </head>
@@ -190,7 +179,8 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
     <div class="leg-item"><span class="leg-pin" id="leg-pin-rumored"></span>Rumored (<span id="cnt-leg-rumored"></span>)</div>
     <div class="leg-item"><span class="leg-pin" id="leg-pin-proposed"></span>Proposed (<span id="cnt-leg-proposed"></span>)</div>
     <div class="leg-item"><span class="leg-pin" id="leg-pin-operating"></span>Operating (<span id="cnt-leg-operating"></span>)</div>
-    <div class="leg-item"><span class="leg-pin" id="leg-pin-approx"></span>Dashed pin: only county known (<span id="cnt-leg-countywide"></span>)</div>
+    <div class="leg-item"><span class="leg-pin" id="leg-pin-approx"></span>Dashed pin or ring: only county known (<span id="cnt-leg-countywide"></span>)</div>
+    <div class="leg-item" style="color:#888">Zoomed out: dots. Zoomed in: pins.</div>
   </div>
   <div class="leg-group">
     <div class="leg-title">Infrastructure</div>
@@ -201,7 +191,6 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 </div>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 // Major electric transmission lines, queried live from a public HIFLD
 // mirror by KY bounding box (this is a public grid dataset, not a private sheet).
@@ -245,7 +234,7 @@ let allCounties=[...new Set(countyGeo.features.map(f=>f.properties.NAME))].sort(
 // General colocation/hosting facilities listed on datacentermap.com's Kentucky
 // directory. These are folded into the main `projects` list at load time (see
 // foldFacilitiesIntoProjects below) so they are counted, filtered, searched
-// and clustered like every other project. The source list stays in its own
+// and mapped like every other project. The source list stays in its own
 // array and its own sheet tab so it is easy to refresh. Listings that
 // duplicated already-tracked projects were excluded when this list was built.
 // Some Louisville/Lexington/Florence coordinates are city-level with manual
@@ -710,10 +699,6 @@ function projectIconSvg(color, dashed){
   const serverGlyph = `<rect x="10.5" y="9" width="11" height="14" rx="1.5" fill="none" stroke="${color}" stroke-width="1.4"/><line x1="10.5" y1="13.67" x2="21.5" y2="13.67" stroke="${color}" stroke-width="1.1"/><line x1="10.5" y1="18.33" x2="21.5" y2="18.33" stroke="${color}" stroke-width="1.1"/><circle cx="13" cy="11.3" r="0.7" fill="${color}"/><circle cx="13" cy="16" r="0.7" fill="${color}"/><circle cx="13" cy="20.7" r="0.7" fill="${color}"/>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="35" viewBox="0 0 32 40"><path d="M16 0C7.163 0 0 7.163 0 16c0 10.707 16 24 16 24S32 26.707 32 16C32 7.163 24.837 0 16 0z" fill="${color}" fill-opacity="${dashed?0.55:1}" stroke="#2b2b2b" stroke-width="1.5" ${dash}/><circle cx="16" cy="16" r="8" fill="white"/>${serverGlyph}</svg>`;
 }
-function projectIcon(p){
-  const stageColor = normKey(p.stage)==='operating' ? '#D1239D' : normKey(p.stage)==='rumored' ? '#16A34A' : '#4338CA';
-  return L.divIcon({className:'', html:projectIconSvg(stageColor, p.countyWide), iconSize:[28,35], iconAnchor:[14,35], popupAnchor:[0,-37]});
-}
 
 function renderRegulations(){
   if(regClusterGroup) map.removeLayer(regClusterGroup);
@@ -728,26 +713,60 @@ function renderRegulations(){
   regClusterGroup = L.layerGroup(markers).addTo(map);
 }
 
+// Zoomed out, projects show as small colored dots so every one stays visible
+// without grouping. From PIN_ZOOM and closer they become full teardrop pins.
+const PIN_ZOOM = 14;
+function stageColor(p){
+  const t=normKey(p.stage);
+  return t==='operating' ? '#D1239D' : t==='rumored' ? '#16A34A' : '#4338CA';
+}
+function projectDotIcon(p, dx, dy){
+  const ring = p.countyWide ? ';outline:1.5px dashed #2b2b2b;outline-offset:1px' : '';
+  return L.divIcon({className:'',
+    html:`<div style="width:12px;height:12px;border-radius:50%;background:${stageColor(p)};border:2px solid #fff;box-shadow:0 0 3px rgba(0,0,0,.65)${ring}"></div>`,
+    iconSize:[12,12], iconAnchor:[6-dx,6-dy], popupAnchor:[dx,-9+dy]});
+}
+function projectPinIcon(p, dx, dy){
+  return L.divIcon({className:'', html:projectIconSvg(stageColor(p), p.countyWide),
+    iconSize:[28,35], iconAnchor:[14-dx,35-dy], popupAnchor:[dx,-37+dy]});
+}
 function renderProjects(){
   if(projClusterGroup) map.removeLayer(projClusterGroup);
-  if(!showProjects){ projClusterGroup = L.layerGroup([]).addTo(map); updateCount(); return; }
-  projClusterGroup = L.markerClusterGroup({showCoverageOnHover:false, maxClusterRadius:28,
-    iconCreateFunction: cluster=>{
-      const count=cluster.getChildCount();
-      const size = count<4?'small':count<8?'medium':'large';
-      const px = size==='small'?34:size==='medium'?40:46;
-      return L.divIcon({html:`<div title="${count} projects here. Click to zoom in."><span>${count}</span></div>`, className:`marker-cluster marker-cluster-${size}`, iconSize:[px,px]});
-    }
-  });
-  projects.forEach(p=>{
-    if(selectedCounty && normKey(p.county)!==normKey(selectedCounty)) return;
-    if(stageFilters.size>0 && !stageFilters.has(p.stage)) return;
-    const m = L.marker([p.lat,p.lng], {icon: projectIcon(p)}).bindPopup(projectPopup(p),{maxWidth:330});
-    projClusterGroup.addLayer(m);
-  });
+  projClusterGroup = L.layerGroup();
+  if(showProjects){
+    const asPins = map.getZoom() >= PIN_ZOOM;
+    const visible = projects.filter(p=>{
+      if(selectedCounty && normKey(p.county)!==normKey(selectedCounty)) return false;
+      if(stageFilters.size>0 && !stageFilters.has(p.stage)) return false;
+      return true;
+    });
+    // Projects with identical coordinates would sit exactly on top of each
+    // other, so each one is nudged a few pixels around a small ring.
+    const groups={};
+    visible.forEach(p=>{ const k=p.lat.toFixed(5)+','+p.lng.toFixed(5); (groups[k]=groups[k]||[]).push(p); });
+    Object.values(groups).forEach(list=>{
+      list.forEach((p,i)=>{
+        let dx=0, dy=0;
+        if(list.length>1){
+          const r = asPins ? 12 : 7, ang = (2*Math.PI*i/list.length) - Math.PI/2;
+          dx = Math.round(r*Math.cos(ang)); dy = Math.round(r*Math.sin(ang));
+        }
+        const m = L.marker([p.lat,p.lng], {icon: asPins ? projectPinIcon(p,dx,dy) : projectDotIcon(p,dx,dy)})
+          .bindPopup(projectPopup(p),{maxWidth:330});
+        projClusterGroup.addLayer(m);
+      });
+    });
+  }
   map.addLayer(projClusterGroup);
   updateCount();
 }
+// Swap dots and pins when the zoom crosses PIN_ZOOM (not on every zoom step).
+let lastAsPins = map.getZoom() >= PIN_ZOOM;
+map.on('zoomend', ()=>{
+  const asPins = map.getZoom() >= PIN_ZOOM;
+  if(asPins !== lastAsPins) renderProjects();
+  lastAsPins = asPins;
+});
 
 function updateCount(){
   const shown = showProjects ? projects.filter(p=>{
@@ -1088,7 +1107,7 @@ function selectProject(idx){
   document.getElementById('no-reg-notice-wrap').innerHTML='';
   if(countyHighlightLayer){ map.removeLayer(countyHighlightLayer); countyHighlightLayer=null; }
   renderProjects();
-  map.setView([p.lat,p.lng], p.countyWide?9:13);
+  map.setView([p.lat,p.lng], p.countyWide?9:PIN_ZOOM);
   L.popup({maxWidth:330}).setLatLng([p.lat,p.lng]).setContent(projectPopup(p)).openOn(map);
 }
 function selectRegulation(idx){
