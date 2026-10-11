@@ -118,6 +118,7 @@ Also handles:
   ever showing the first 4; raised the cap and added scroll to the dropdown to support it.
 
 ## Shareable views and county summary
+The Regulation filter is multi-select (`regFilters`, a Set; empty means All; `reg=ordinance,pending` in the URL).
 `viewToHash()` / `applyHash()` keep the filters (reg, stage, proj, tx, gas), selected county and map
 view in the URL hash (updated with `history.replaceState`, so no history clutter); the "Copy link to
 this view" button copies it. Unknown or malformed values are ignored. County popups append

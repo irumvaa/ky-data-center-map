@@ -189,7 +189,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   New to this map? <a href="help.html">See how it works</a>.
 </div>
 <div class="controls">
-  <span class="ctrl-label">Regulation:</span>
+  <span class="ctrl-label">Regulation (pick any):</span>
   <button class="pill active" id="btn-reg-all" onclick="setRegFilter('all')">All (<span id="cnt-reg-all"></span>)</button>
   <button class="pill" id="btn-reg-pending" onclick="setRegFilter('pending')"><span class="dot" style="background:#DC2626"></span>Pending/Proposed (<span id="cnt-reg-pending"></span>)</button>
   <button class="pill" id="btn-reg-moratorium" onclick="setRegFilter('moratorium')"><span class="dot" style="background:#0072B2"></span>Moratorium (<span id="cnt-reg-moratorium"></span>)</button>
@@ -316,7 +316,7 @@ let cityOnlyCounties=new Set();
 let bothLevelCounties=new Set();
 let regClusterGroup=null, projClusterGroup=null, countyHighlightLayer=null, transmissionLayer=null, gasPipelineLayer=null;
 let selectedCounty=null, suggestIdx=-1;
-let regFilter='all', showProjects=true, stageFilters=new Set(), showTransmission=false, showGasPipelines=false;
+let regFilters=new Set(), showProjects=true, stageFilters=new Set(), showTransmission=false, showGasPipelines=false;
 
 function normKey(s){return (s||"").trim().toLowerCase();}
 
@@ -498,7 +498,7 @@ function regTypeKey(type){
   if(t==='pending' || t==='pending or proposed' || t==='pending/proposed') return 'pending';
   return '';
 }
-function regMatchesFilter(r){ return regFilter==='all' || regTypeKey(r.type)===regFilter; }
+function regMatchesFilter(r){ return regFilters.size===0 || regFilters.has(regTypeKey(r.type)); }
 // For one county polygon, says whether its county-wide rule and/or any
 // city rule inside it match the active Regulation filter.
 function countyFilterState(f){
@@ -664,7 +664,7 @@ function stripePatternId(type){ return 'stripe-' + normKey(type).replace(/[^a-z]
 
 function countyStyle_(f){
   if(!f.properties.has_reg) return {color:'#7a7a7a', weight:1.2, fillColor:'#999999', fillOpacity:0.12};
-  if(regFilter!=='all'){
+  if(regFilters.size>0){
     const {countyMatch, cityMatch} = countyFilterState(f);
     if(!countyMatch && !cityMatch) return {color:'#cfcfcf', weight:0.8, fillColor:'#999999', fillOpacity:0.03};
     if(countyMatch && cityMatch){
@@ -899,10 +899,14 @@ function renderAll(){
   renderProjects();
 }
 
+// Regulation filter: click a type to add it, click again to remove it; several
+// can be on at once. "All" (or removing the last type) clears the filter.
 function setRegFilter(val){
-  regFilter=val;
-  ['all','moratorium','ordinance','pending'].forEach(id=>document.getElementById('btn-reg-'+id).classList.remove('active'));
-  document.getElementById('btn-reg-'+val).classList.add('active');
+  if(val==='all') regFilters.clear();
+  else if(regFilters.has(val)) regFilters.delete(val);
+  else regFilters.add(val);
+  ['moratorium','ordinance','pending'].forEach(id=>document.getElementById('btn-reg-'+id).classList.toggle('active', regFilters.has(id)));
+  document.getElementById('btn-reg-all').classList.toggle('active', regFilters.size===0);
   refreshCountyLayer();
   updateFilterCounts();
   renderRegulations();
@@ -1300,7 +1304,7 @@ if (DATA_SOURCE_URL) {
 const REG_KEYS=['all','moratorium','ordinance','pending'];
 function viewToHash(){
   const q=new URLSearchParams();
-  if(regFilter!=='all') q.set('reg',regFilter);
+  if(regFilters.size) q.set('reg',[...regFilters].join(','));
   if(stageFilters.size) q.set('stage',[...stageFilters].join(','));
   if(!showProjects) q.set('proj','0');
   if(showTransmission) q.set('tx','1');
@@ -1318,7 +1322,7 @@ function syncHash(){
 function applyHash(){
   const q=new URLSearchParams(location.hash.replace(/^#/,''));
   if(![...q.keys()].length) return;
-  const reg=q.get('reg'); if(REG_KEYS.includes(reg)) setRegFilter(reg);
+  (q.get('reg')||'').split(',').forEach(t=>{ if(['moratorium','ordinance','pending'].includes(t) && !regFilters.has(t)) setRegFilter(t); });
   (q.get('stage')||'').split(',').forEach(st=>{ if(['Rumored','Proposed','Operating'].includes(st) && !stageFilters.has(st)) toggleStage(st); });
   if(q.get('proj')==='0' && showProjects) toggleProjects();
   if(q.get('tx')==='1' && !showTransmission) toggleTransmission();
