@@ -70,16 +70,16 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .divider{width:1px;height:20px;background:#e2e0db;margin:0 2px;flex-shrink:0}
 .badge-count{margin-left:auto;font-size:12px;color:#666;background:#f0efe9;padding:4px 12px;border-radius:20px;white-space:nowrap}
 #map{width:100%;height:calc(100vh - 260px);min-height:360px}
-.legend{background:#fff;border-top:1px solid #e2e0db;border-bottom:1px solid #e2e0db;padding:10px 18px;display:flex;gap:10px 32px;flex-wrap:wrap;align-items:flex-start}
-.leg-group{display:flex;flex-direction:column;gap:5px;min-width:190px}
-.leg-title{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#333;padding-bottom:3px;border-bottom:1px solid #e2e0db;margin-bottom:1px}
-.leg-pin{display:inline-flex;width:14px;height:17px;flex-shrink:0}
+.legend{background:#fff;border-top:1px solid #e2e0db;border-bottom:1px solid #e2e0db;padding:5px 18px;display:flex;flex-direction:column;gap:3px}
+.leg-group{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:2px 16px}
+.leg-title{flex:0 0 205px;white-space:nowrap;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#333}
+.leg-pin{display:inline-flex;width:12px;height:15px;flex-shrink:0}
 .leg-pin svg{width:100%;height:100%;display:block}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#555}
 .leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 .leg-box{width:14px;height:11px;border-radius:2px;flex-shrink:0}
 .leg-line{width:16px;height:2px;flex-shrink:0}
-.leg-credit{flex-basis:100%;text-align:right;font-size:11px;color:#aaa}
+.leg-credit{margin-left:auto;font-size:10.5px;color:#aaa}
 .leaflet-popup-content-wrapper{border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.12)!important;padding:0!important}
 .leaflet-popup-content{margin:0!important;width:auto!important;max-height:340px;overflow-y:auto;}
 .pop{padding:14px 16px;min-width:240px;max-width:310px}
@@ -112,7 +112,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .marker-cluster-medium div{background-color:rgba(110,52,138,0.97);color:#fff;font-weight:800}
 .marker-cluster-large{background-color:rgba(95,40,125,0.35)}
 .marker-cluster-large div{background-color:rgba(80,30,108,0.98);color:#fff;font-weight:800}
-@media(max-width:600px){header{padding:12px 14px}#map{height:calc(100vh - 240px)}.controls{padding:8px 12px;gap:4px}.stats-bar{gap:10px;padding:6px 12px}}
+@media(max-width:600px){.leg-title{flex-basis:100%;white-space:normal}header{padding:12px 14px}#map{height:calc(100vh - 240px)}.controls{padding:8px 12px;gap:4px}.stats-bar{gap:10px;padding:6px 12px}}
 </style>
 </head>
 <body>
@@ -181,23 +181,23 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
     <div class="leg-item"><span class="leg-box" style="background:#0072B2"></span>Moratorium (<span id="cnt-leg-mor"></span>)</div>
     <div class="leg-item"><span class="leg-box" style="background:#2DD4BF"></span>Ordinance (<span id="cnt-leg-ord"></span>)</div>
     <div class="leg-item"><span class="leg-box" style="background:#DC2626"></span>Pending/Proposed (<span id="cnt-leg-pend"></span>)</div>
-    <div class="leg-item"><span class="leg-box" style="background:rgba(230,159,0,0.3);border:1.5px solid #a66d00"></span>City-level only, no county-wide rule (<span id="cnt-leg-cityonly"></span> counties)</div>
-    <div class="leg-item"><span class="leg-box" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px);border:1.5px solid #555"></span>County-wide and city-level rules (<span id="cnt-leg-both"></span> counties)</div>
-    <div class="leg-item"><span class="leg-box" style="background:rgba(153,153,153,0.15);border:1.5px solid #7a7a7a"></span>No known regulation (<span id="cnt-leg-none"></span> counties)</div>
+    <div class="leg-item"><span class="leg-box" style="background:rgba(230,159,0,0.3);border:1.5px solid #a66d00"></span>City rules only (<span id="cnt-leg-cityonly"></span> counties)</div>
+    <div class="leg-item"><span class="leg-box" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px);border:1.5px solid #555"></span>County + city rules (<span id="cnt-leg-both"></span> counties)</div>
+    <div class="leg-item"><span class="leg-box" style="background:rgba(153,153,153,0.15);border:1.5px solid #7a7a7a"></span>No regulation (<span id="cnt-leg-none"></span> counties)</div>
   </div>
   <div class="leg-group">
     <div class="leg-title">Data center projects</div>
     <div class="leg-item"><span class="leg-pin" id="leg-pin-rumored"></span>Rumored (<span id="cnt-leg-rumored"></span>)</div>
     <div class="leg-item"><span class="leg-pin" id="leg-pin-proposed"></span>Proposed (<span id="cnt-leg-proposed"></span>)</div>
     <div class="leg-item"><span class="leg-pin" id="leg-pin-operating"></span>Operating (<span id="cnt-leg-operating"></span>)</div>
-    <div class="leg-item"><span class="leg-pin" id="leg-pin-approx"></span>Dashed pin: only the county is known, not the exact site (<span id="cnt-leg-countywide"></span>)</div>
+    <div class="leg-item"><span class="leg-pin" id="leg-pin-approx"></span>Dashed pin: only county known (<span id="cnt-leg-countywide"></span>)</div>
   </div>
   <div class="leg-group">
     <div class="leg-title">Infrastructure</div>
     <div class="leg-item"><span class="leg-line" style="background:#2c3e50"></span>Transmission line</div>
     <div class="leg-item"><span class="leg-line" style="background:repeating-linear-gradient(90deg,#8B5A2B 0 6px,transparent 6px 9px)"></span>Gas pipeline</div>
+    <span class="leg-credit">Data: KY DC tracking sheets, datacentermap.com, Kentucky Lantern, HIFLD (transmission, ~2025) &amp; EIA (pipelines, 2020 snapshot) · Map: OpenStreetMap</span>
   </div>
-  <span class="leg-credit">Data: KY DC tracking sheets, datacentermap.com, Kentucky Lantern, HIFLD (transmission, ~2025) &amp; EIA (pipelines, 2020 snapshot) · Map: OpenStreetMap</span>
 </div>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
