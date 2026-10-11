@@ -70,12 +70,16 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .divider{width:1px;height:20px;background:#e2e0db;margin:0 2px;flex-shrink:0}
 .badge-count{margin-left:auto;font-size:12px;color:#666;background:#f0efe9;padding:4px 12px;border-radius:20px;white-space:nowrap}
 #map{width:100%;height:calc(100vh - 260px);min-height:360px}
-.legend{background:#fff;border-top:1px solid #e2e0db;border-bottom:1px solid #e2e0db;padding:9px 18px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.legend{background:#fff;border-top:1px solid #e2e0db;border-bottom:1px solid #e2e0db;padding:10px 18px;display:flex;gap:10px 32px;flex-wrap:wrap;align-items:flex-start}
+.leg-group{display:flex;flex-direction:column;gap:5px;min-width:190px}
+.leg-title{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#333;padding-bottom:3px;border-bottom:1px solid #e2e0db;margin-bottom:1px}
+.leg-pin{display:inline-flex;width:14px;height:17px;flex-shrink:0}
+.leg-pin svg{width:100%;height:100%;display:block}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#555}
 .leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 .leg-box{width:14px;height:11px;border-radius:2px;flex-shrink:0}
 .leg-line{width:16px;height:2px;flex-shrink:0}
-.leg-credit{margin-left:auto;font-size:11px;color:#aaa}
+.leg-credit{flex-basis:100%;text-align:right;font-size:11px;color:#aaa}
 .leaflet-popup-content-wrapper{border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.12)!important;padding:0!important}
 .leaflet-popup-content{margin:0!important;width:auto!important;max-height:340px;overflow-y:auto;}
 .pop{padding:14px 16px;min-width:240px;max-width:310px}
@@ -99,12 +103,15 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .pop-cta a{font-size:11.5px;color:#7d3c98;font-weight:600;text-decoration:none}
 .pop-cta a:hover{text-decoration:underline}
 .pop-links a{font-size:11px;color:#7d3c98;margin-right:8px}
-.marker-cluster-small{background-color:rgba(165,105,189,0.3)}
-.marker-cluster-small div{background-color:rgba(165,105,189,0.7);color:#fff;font-weight:700}
-.marker-cluster-medium{background-color:rgba(142,68,173,0.3)}
-.marker-cluster-medium div{background-color:rgba(142,68,173,0.7);color:#fff;font-weight:700}
-.marker-cluster-large{background-color:rgba(125,60,152,0.3)}
-.marker-cluster-large div{background-color:rgba(125,60,152,0.8);color:#fff;font-weight:700}
+.marker-cluster{border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45)}
+.marker-cluster div{font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;margin:0;width:100%;height:100%;border-radius:50%}
+.marker-cluster span{line-height:1}
+.marker-cluster-small{background-color:rgba(142,68,173,0.35)}
+.marker-cluster-small div{background-color:rgba(142,68,173,0.95);color:#fff;font-weight:800}
+.marker-cluster-medium{background-color:rgba(125,60,152,0.35)}
+.marker-cluster-medium div{background-color:rgba(110,52,138,0.97);color:#fff;font-weight:800}
+.marker-cluster-large{background-color:rgba(95,40,125,0.35)}
+.marker-cluster-large div{background-color:rgba(80,30,108,0.98);color:#fff;font-weight:800}
 @media(max-width:600px){header{padding:12px 14px}#map{height:calc(100vh - 240px)}.controls{padding:8px 12px;gap:4px}.stats-bar{gap:10px;padding:6px 12px}}
 </style>
 </head>
@@ -171,16 +178,31 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <span class="badge-count" id="count">0 shown</span>
 </div>
 <div class="legend">
-  <div class="leg-item"><span class="leg-box" style="background:#4338CA;border:2px dashed #2c2a8c"></span>County-wide (exact site unknown) (<span id="cnt-leg-countywide"></span>)</div>
-  <div class="leg-item"><span class="leg-box" style="background:rgba(230,159,0,0.3);border:1.5px solid #a66d00"></span>City-level only (no county-wide reg) (<span id="cnt-leg-cityonly"></span>)</div>
-  <div class="leg-item"><span class="leg-box" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px);border:1.5px solid #555"></span>Both county-wide AND city-level (<span id="cnt-leg-both"></span>)</div>
-  <div class="leg-item"><span class="leg-box" style="background:rgba(153,153,153,0.15);border:1.5px solid #7a7a7a"></span>No known regulation (<span id="cnt-leg-none"></span>)</div>
-  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc"></span>datacentermap.com: Operational (<span id="cnt-dc-operational"></span>)</div>
-  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-proposed"></span>datacentermap.com: Proposed (<span id="cnt-dc-proposed"></span>)</div>
-  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-construction"></span>datacentermap.com: Under construction (<span id="cnt-dc-construction"></span>)</div>
-  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-unknown"></span>datacentermap.com: Unknown/unconfirmed (<span id="cnt-dc-unknown"></span>)</div>
-  <div class="leg-item"><span class="leg-line" style="background:#2c3e50"></span>Transmission line</div>
-  <div class="leg-item"><span class="leg-line" style="background:repeating-linear-gradient(90deg,#8B5A2B 0 6px,transparent 6px 9px)"></span>Gas pipeline</div>
+  <div class="leg-group">
+    <div class="leg-title">Regulations and moratoriums</div>
+    <div class="leg-item"><span class="leg-box" style="background:#0072B2"></span>Moratorium (<span id="cnt-leg-mor"></span>)</div>
+    <div class="leg-item"><span class="leg-box" style="background:#2DD4BF"></span>Ordinance (<span id="cnt-leg-ord"></span>)</div>
+    <div class="leg-item"><span class="leg-box" style="background:#DC2626"></span>Pending/Proposed (<span id="cnt-leg-pend"></span>)</div>
+    <div class="leg-item"><span class="leg-box" style="background:rgba(230,159,0,0.3);border:1.5px solid #a66d00"></span>City-level only, no county-wide rule (<span id="cnt-leg-cityonly"></span> counties)</div>
+    <div class="leg-item"><span class="leg-box" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px);border:1.5px solid #555"></span>County-wide and city-level rules (<span id="cnt-leg-both"></span> counties)</div>
+    <div class="leg-item"><span class="leg-box" style="background:rgba(153,153,153,0.15);border:1.5px solid #7a7a7a"></span>No known regulation (<span id="cnt-leg-none"></span> counties)</div>
+  </div>
+  <div class="leg-group">
+    <div class="leg-title">Data center projects</div>
+    <div class="leg-item"><span class="leg-pin" id="leg-pin-rumored"></span>Rumored (<span id="cnt-leg-rumored"></span>)</div>
+    <div class="leg-item"><span class="leg-pin" id="leg-pin-proposed"></span>Proposed (<span id="cnt-leg-proposed"></span>)</div>
+    <div class="leg-item"><span class="leg-pin" id="leg-pin-operating"></span>Operating (<span id="cnt-leg-operating"></span>)</div>
+    <div class="leg-item"><span class="leg-pin" id="leg-pin-approx"></span>Dashed pin: only the county is known, not the exact site (<span id="cnt-leg-countywide"></span>)</div>
+    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc"></span>datacentermap.com: Operational (<span id="cnt-dc-operational"></span>)</div>
+    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-proposed"></span>datacentermap.com: Proposed (<span id="cnt-dc-proposed"></span>)</div>
+    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-construction"></span>datacentermap.com: Under construction (<span id="cnt-dc-construction"></span>)</div>
+    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-unknown"></span>datacentermap.com: Unknown/unconfirmed (<span id="cnt-dc-unknown"></span>)</div>
+  </div>
+  <div class="leg-group">
+    <div class="leg-title">Infrastructure</div>
+    <div class="leg-item"><span class="leg-line" style="background:#2c3e50"></span>Transmission line</div>
+    <div class="leg-item"><span class="leg-line" style="background:repeating-linear-gradient(90deg,#8B5A2B 0 6px,transparent 6px 9px)"></span>Gas pipeline</div>
+  </div>
   <span class="leg-credit">Data: KY DC tracking sheets, Kentucky Lantern, HIFLD (transmission, ~2025) &amp; EIA (pipelines, 2020 snapshot) · Map: OpenStreetMap</span>
 </div>
 <div id="map"></div>
@@ -448,6 +470,23 @@ function updateStatsBar(){
 }
 updateStatsBar();
 
+function regTypeKey(type){
+  const t=normKey(type);
+  if(t==='moratorium') return 'moratorium';
+  if(t==='ordinance') return 'ordinance';
+  if(t==='pending' || t==='pending or proposed' || t==='pending/proposed') return 'pending';
+  return '';
+}
+function regMatchesFilter(r){ return regFilter==='all' || regTypeKey(r.type)===regFilter; }
+// For one county polygon, says whether its county-wide rule and/or any
+// city rule inside it match the active Regulation filter.
+function countyFilterState(f){
+  const key=normKey(f.properties.NAME);
+  const countyReg=f.properties.reg;
+  const countyMatch=!!(countyReg && regMatchesFilter(countyReg));
+  const cityMatch=regulations.some(r=>normKey(r.level)==='city' && normKey(r.county)===key && regMatchesFilter(r));
+  return {countyMatch, cityMatch};
+}
 function regColor(type){
   const t=normKey(type);
   if(t==='moratorium') return '#0072B2'; // blue
@@ -599,6 +638,18 @@ function stripePatternId(type){ return 'stripe-' + normKey(type).replace(/[^a-z]
 
 function countyStyle_(f){
   if(!f.properties.has_reg) return {color:'#7a7a7a', weight:1.2, fillColor:'#999999', fillOpacity:0.12};
+  if(regFilter!=='all'){
+    const {countyMatch, cityMatch} = countyFilterState(f);
+    if(!countyMatch && !cityMatch) return {color:'#cfcfcf', weight:0.8, fillColor:'#999999', fillOpacity:0.03};
+    if(countyMatch && cityMatch){
+      return {color:regColor(f.properties.reg.type), weight:1.6, fillColor:`url(#${stripePatternId(f.properties.reg.type)})`, fillOpacity:0.55};
+    }
+    if(countyMatch){
+      const c=regColor(f.properties.reg.type);
+      return {color:c, weight:1.4, fillColor:c, fillOpacity:0.35};
+    }
+    return {color:'#a66d00', weight:1.3, fillColor:'#E69F00', fillOpacity:0.28};
+  }
   if(f.properties.both_levels && f.properties.reg){
     const patternId = stripePatternId(f.properties.reg.type);
     return {color:regColor(f.properties.reg.type), weight:1.6, fillColor:`url(#${patternId})`, fillOpacity:0.55};
@@ -738,7 +789,7 @@ function renderRegulations(){
   if(regClusterGroup) map.removeLayer(regClusterGroup);
   const markers=[];
   regulations.forEach(r=>{
-    if(regFilter!=='all' && normKey(r.type)!==regFilter) return;
+    if(!regMatchesFilter(r)) return;
     if(normKey(r.level)==='city' && r.lat!=null){
       const m = L.marker([r.lat,r.lng], {icon: cityRegMarkerIcon(regColor(r.type))}).bindPopup(regulationPopup(r));
       markers.push(m);
@@ -750,11 +801,12 @@ function renderRegulations(){
 function renderProjects(){
   if(projClusterGroup) map.removeLayer(projClusterGroup);
   if(!showProjects){ projClusterGroup = L.layerGroup([]).addTo(map); updateCount(); return; }
-  projClusterGroup = L.markerClusterGroup({showCoverageOnHover:false, maxClusterRadius:45,
+  projClusterGroup = L.markerClusterGroup({showCoverageOnHover:false, maxClusterRadius:28,
     iconCreateFunction: cluster=>{
       const count=cluster.getChildCount();
       const size = count<4?'small':count<8?'medium':'large';
-      return L.divIcon({html:`<div><span>${count}</span></div>`, className:`marker-cluster marker-cluster-${size}`, iconSize:[38,38]});
+      const px = size==='small'?34:size==='medium'?40:46;
+      return L.divIcon({html:`<div title="${count} projects here. Click to zoom in."><span>${count}</span></div>`, className:`marker-cluster marker-cluster-${size}`, iconSize:[px,px]});
     }
   });
   projects.forEach(p=>{
@@ -779,10 +831,14 @@ function updateCount(){
 }
 
 function updateFilterCounts(){
-  document.getElementById('cnt-reg-all').textContent = regulations.length;
-  document.getElementById('cnt-reg-pending').textContent = regulations.filter(r=>r.type==='Pending/Proposed').length;
-  document.getElementById('cnt-reg-moratorium').textContent = regulations.filter(r=>r.type==='Moratorium').length;
-  document.getElementById('cnt-reg-ordinance').textContent = regulations.filter(r=>r.type==='Ordinance').length;
+  const breakout = (list)=>{
+    const city=list.filter(r=>normKey(r.level)==='city').length;
+    return list.length + ' (' + (list.length-city) + ' county, ' + city + ' city)';
+  };
+  document.getElementById('cnt-reg-all').textContent = breakout(regulations);
+  document.getElementById('cnt-reg-pending').textContent = breakout(regulations.filter(r=>regTypeKey(r.type)==='pending'));
+  document.getElementById('cnt-reg-moratorium').textContent = breakout(regulations.filter(r=>regTypeKey(r.type)==='moratorium'));
+  document.getElementById('cnt-reg-ordinance').textContent = breakout(regulations.filter(r=>regTypeKey(r.type)==='ordinance'));
 
   document.getElementById('cnt-proj-all').textContent = projects.length;
   document.getElementById('cnt-stage-rumored').textContent = projects.filter(p=>p.stage==='Rumored').length;
@@ -793,9 +849,22 @@ function updateFilterCounts(){
   // Reuses the same county-state sets computeRegStats() already built, so
   // these counts can never drift out of sync with what's actually shaded
   // on the map.
+  document.getElementById('cnt-leg-mor').textContent = regulations.filter(r=>regTypeKey(r.type)==='moratorium').length;
+  document.getElementById('cnt-leg-ord').textContent = regulations.filter(r=>regTypeKey(r.type)==='ordinance').length;
+  document.getElementById('cnt-leg-pend').textContent = regulations.filter(r=>regTypeKey(r.type)==='pending').length;
+  document.getElementById('cnt-leg-rumored').textContent = projects.filter(p=>p.stage==='Rumored').length;
+  document.getElementById('cnt-leg-proposed').textContent = projects.filter(p=>p.stage==='Proposed').length;
+  document.getElementById('cnt-leg-operating').textContent = projects.filter(p=>p.stage==='Operating').length;
   document.getElementById('cnt-leg-countywide').textContent = projects.filter(p=>p.countyWide).length;
-  document.getElementById('cnt-leg-cityonly').textContent = cityOnlyCounties.size;
-  document.getElementById('cnt-leg-both').textContent = bothLevelCounties.size;
+  let cityOnlyN=0, bothN=0;
+  countyGeo.features.forEach(f=>{
+    if(!f.properties.has_reg) return;
+    const {countyMatch, cityMatch} = countyFilterState(f);
+    if(cityMatch && !countyMatch) cityOnlyN++;
+    else if(cityMatch && countyMatch) bothN++;
+  });
+  document.getElementById('cnt-leg-cityonly').textContent = cityOnlyN;
+  document.getElementById('cnt-leg-both').textContent = bothN;
   document.getElementById('cnt-leg-none').textContent = allCounties.length - regCountiesSet.size;
 
   const dcCounts = { proposed:0, construction:0, unknown:0, operational:0 };
@@ -820,6 +889,8 @@ function setRegFilter(val){
   regFilter=val;
   ['all','moratorium','ordinance','pending'].forEach(id=>document.getElementById('btn-reg-'+id).classList.remove('active'));
   document.getElementById('btn-reg-'+val).classList.add('active');
+  refreshCountyLayer();
+  updateFilterCounts();
   renderRegulations();
 }
 function toggleProjects(){
@@ -1174,6 +1245,10 @@ renderAll();
 // Show the exact same pin icons used on the map inside the filter pills,
 // so the toggle buttons visually match what's actually on the map.
 document.getElementById('pin-rumored').innerHTML = projectIconSvg('#16A34A', false);
+document.getElementById('leg-pin-rumored').innerHTML = projectIconSvg('#16A34A', false);
+document.getElementById('leg-pin-proposed').innerHTML = projectIconSvg('#4338CA', false);
+document.getElementById('leg-pin-operating').innerHTML = projectIconSvg('#D1239D', false);
+document.getElementById('leg-pin-approx').innerHTML = projectIconSvg('#6b7280', true);
 document.getElementById('pin-proposed').innerHTML = projectIconSvg('#4338CA', false);
 document.getElementById('pin-operating').innerHTML = projectIconSvg('#D1239D', false);
 document.getElementById('pin-other-dc').innerHTML = otherDCIconSvg();
