@@ -70,12 +70,16 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .divider{width:1px;height:20px;background:#e2e0db;margin:0 2px;flex-shrink:0}
 .badge-count{margin-left:auto;font-size:12px;color:#666;background:#f0efe9;padding:4px 12px;border-radius:20px;white-space:nowrap}
 #map{width:100%;height:calc(100vh - 260px);min-height:360px}
-.legend{background:#fff;border-top:1px solid #e2e0db;border-bottom:1px solid #e2e0db;padding:9px 18px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.legend{background:#fff;border-top:1px solid #e2e0db;border-bottom:1px solid #e2e0db;padding:10px 18px;display:flex;gap:10px 32px;flex-wrap:wrap;align-items:flex-start}
+.leg-group{display:flex;flex-direction:column;gap:5px;min-width:190px}
+.leg-title{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#333;padding-bottom:3px;border-bottom:1px solid #e2e0db;margin-bottom:1px}
+.leg-pin{display:inline-flex;width:14px;height:17px;flex-shrink:0}
+.leg-pin svg{width:100%;height:100%;display:block}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#555}
 .leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 .leg-box{width:14px;height:11px;border-radius:2px;flex-shrink:0}
 .leg-line{width:16px;height:2px;flex-shrink:0}
-.leg-credit{margin-left:auto;font-size:11px;color:#aaa}
+.leg-credit{flex-basis:100%;text-align:right;font-size:11px;color:#aaa}
 .leaflet-popup-content-wrapper{border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.12)!important;padding:0!important}
 .leaflet-popup-content{margin:0!important;width:auto!important;max-height:340px;overflow-y:auto;}
 .pop{padding:14px 16px;min-width:240px;max-width:310px}
@@ -171,16 +175,31 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <span class="badge-count" id="count">0 shown</span>
 </div>
 <div class="legend">
-  <div class="leg-item"><span class="leg-box" style="background:#4338CA;border:2px dashed #2c2a8c"></span>County-wide (exact site unknown) (<span id="cnt-leg-countywide"></span>)</div>
-  <div class="leg-item"><span class="leg-box" style="background:rgba(230,159,0,0.3);border:1.5px solid #a66d00"></span>City-level only (no county-wide reg) (<span id="cnt-leg-cityonly"></span>)</div>
-  <div class="leg-item"><span class="leg-box" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px);border:1.5px solid #555"></span>Both county-wide AND city-level (<span id="cnt-leg-both"></span>)</div>
-  <div class="leg-item"><span class="leg-box" style="background:rgba(153,153,153,0.15);border:1.5px solid #7a7a7a"></span>No known regulation (<span id="cnt-leg-none"></span>)</div>
-  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc"></span>datacentermap.com: Operational (<span id="cnt-dc-operational"></span>)</div>
-  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-proposed"></span>datacentermap.com: Proposed (<span id="cnt-dc-proposed"></span>)</div>
-  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-construction"></span>datacentermap.com: Under construction (<span id="cnt-dc-construction"></span>)</div>
-  <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-unknown"></span>datacentermap.com: Unknown/unconfirmed (<span id="cnt-dc-unknown"></span>)</div>
-  <div class="leg-item"><span class="leg-line" style="background:#2c3e50"></span>Transmission line</div>
-  <div class="leg-item"><span class="leg-line" style="background:repeating-linear-gradient(90deg,#8B5A2B 0 6px,transparent 6px 9px)"></span>Gas pipeline</div>
+  <div class="leg-group">
+    <div class="leg-title">Regulations and moratoriums</div>
+    <div class="leg-item"><span class="leg-box" style="background:#0072B2"></span>Moratorium (<span id="cnt-leg-mor"></span>)</div>
+    <div class="leg-item"><span class="leg-box" style="background:#2DD4BF"></span>Ordinance (<span id="cnt-leg-ord"></span>)</div>
+    <div class="leg-item"><span class="leg-box" style="background:#DC2626"></span>Pending/Proposed (<span id="cnt-leg-pend"></span>)</div>
+    <div class="leg-item"><span class="leg-box" style="background:rgba(230,159,0,0.3);border:1.5px solid #a66d00"></span>City-level only, no county-wide rule (<span id="cnt-leg-cityonly"></span> counties)</div>
+    <div class="leg-item"><span class="leg-box" style="background:repeating-linear-gradient(45deg,#E69F00 0 3px,#0072B2 3px 6px);border:1.5px solid #555"></span>County-wide and city-level rules (<span id="cnt-leg-both"></span> counties)</div>
+    <div class="leg-item"><span class="leg-box" style="background:rgba(153,153,153,0.15);border:1.5px solid #7a7a7a"></span>No known regulation (<span id="cnt-leg-none"></span> counties)</div>
+  </div>
+  <div class="leg-group">
+    <div class="leg-title">Data center projects</div>
+    <div class="leg-item"><span class="leg-pin" id="leg-pin-rumored"></span>Rumored (<span id="cnt-leg-rumored"></span>)</div>
+    <div class="leg-item"><span class="leg-pin" id="leg-pin-proposed"></span>Proposed (<span id="cnt-leg-proposed"></span>)</div>
+    <div class="leg-item"><span class="leg-pin" id="leg-pin-operating"></span>Operating (<span id="cnt-leg-operating"></span>)</div>
+    <div class="leg-item"><span class="leg-pin" id="leg-pin-approx"></span>Dashed pin: only the county is known, not the exact site (<span id="cnt-leg-countywide"></span>)</div>
+    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc"></span>datacentermap.com: Operational (<span id="cnt-dc-operational"></span>)</div>
+    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-proposed"></span>datacentermap.com: Proposed (<span id="cnt-dc-proposed"></span>)</div>
+    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-construction"></span>datacentermap.com: Under construction (<span id="cnt-dc-construction"></span>)</div>
+    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-unknown"></span>datacentermap.com: Unknown/unconfirmed (<span id="cnt-dc-unknown"></span>)</div>
+  </div>
+  <div class="leg-group">
+    <div class="leg-title">Infrastructure</div>
+    <div class="leg-item"><span class="leg-line" style="background:#2c3e50"></span>Transmission line</div>
+    <div class="leg-item"><span class="leg-line" style="background:repeating-linear-gradient(90deg,#8B5A2B 0 6px,transparent 6px 9px)"></span>Gas pipeline</div>
+  </div>
   <span class="leg-credit">Data: KY DC tracking sheets, Kentucky Lantern, HIFLD (transmission, ~2025) &amp; EIA (pipelines, 2020 snapshot) · Map: OpenStreetMap</span>
 </div>
 <div id="map"></div>
@@ -826,6 +845,12 @@ function updateFilterCounts(){
   // Reuses the same county-state sets computeRegStats() already built, so
   // these counts can never drift out of sync with what's actually shaded
   // on the map.
+  document.getElementById('cnt-leg-mor').textContent = regulations.filter(r=>regTypeKey(r.type)==='moratorium').length;
+  document.getElementById('cnt-leg-ord').textContent = regulations.filter(r=>regTypeKey(r.type)==='ordinance').length;
+  document.getElementById('cnt-leg-pend').textContent = regulations.filter(r=>regTypeKey(r.type)==='pending').length;
+  document.getElementById('cnt-leg-rumored').textContent = projects.filter(p=>p.stage==='Rumored').length;
+  document.getElementById('cnt-leg-proposed').textContent = projects.filter(p=>p.stage==='Proposed').length;
+  document.getElementById('cnt-leg-operating').textContent = projects.filter(p=>p.stage==='Operating').length;
   document.getElementById('cnt-leg-countywide').textContent = projects.filter(p=>p.countyWide).length;
   let cityOnlyN=0, bothN=0;
   countyGeo.features.forEach(f=>{
@@ -1216,6 +1241,10 @@ renderAll();
 // Show the exact same pin icons used on the map inside the filter pills,
 // so the toggle buttons visually match what's actually on the map.
 document.getElementById('pin-rumored').innerHTML = projectIconSvg('#16A34A', false);
+document.getElementById('leg-pin-rumored').innerHTML = projectIconSvg('#16A34A', false);
+document.getElementById('leg-pin-proposed').innerHTML = projectIconSvg('#4338CA', false);
+document.getElementById('leg-pin-operating').innerHTML = projectIconSvg('#D1239D', false);
+document.getElementById('leg-pin-approx').innerHTML = projectIconSvg('#6b7280', true);
 document.getElementById('pin-proposed').innerHTML = projectIconSvg('#4338CA', false);
 document.getElementById('pin-operating').innerHTML = projectIconSvg('#D1239D', false);
 document.getElementById('pin-other-dc').innerHTML = otherDCIconSvg();
