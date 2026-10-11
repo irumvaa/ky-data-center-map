@@ -102,6 +102,27 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .pop-cta a:hover{text-decoration:underline}
 .pop-links a{font-size:11px;color:#7d3c98;margin-right:8px}
 @media(max-width:600px){.leg-title{flex-basis:100%;white-space:normal}header{padding:12px 14px}#map{height:calc(100vh - 240px)}.controls{padding:8px 12px;gap:4px}.stats-bar{gap:10px;padding:6px 12px}}
+
+/* Wide screens: explanation and filters on the left, legend on the right. */
+.layout{display:flex;flex-direction:column}
+.side-right{order:3}
+@media(min-width:1000px){
+  .layout{flex-direction:row;align-items:stretch;height:calc(100vh - 40px);min-height:620px}
+  .side{overflow-y:auto;flex:0 0 auto;background:#fff}
+  .side-left{width:290px;border-right:1px solid #e2e0db}
+  .side-right{width:240px;border-left:1px solid #e2e0db;order:0}
+  #map{flex:1 1 auto;width:auto;height:auto;min-height:0}
+  .about-banner{padding:12px 16px;font-size:12.5px;line-height:1.5;border-bottom:1px solid #e3d8ef}
+  .controls{flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:5px;padding:12px 16px;border-bottom:none}
+  .controls .divider{width:100%;height:1px;margin:6px 0}
+  .controls .ctrl-label{font-weight:700;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:#333;margin:2px 0 0}
+  .controls .pill{justify-content:flex-start;border-radius:8px}
+  .controls .badge-count{margin:6px 0 0;text-align:center}
+  .legend{border:none;padding:12px 16px;gap:14px}
+  .leg-group{flex-direction:column;align-items:flex-start;flex-wrap:nowrap;gap:5px}
+  .leg-title{flex:0 0 auto;white-space:normal}
+  .leg-credit{margin-left:0;line-height:1.4}
+}
 </style>
 </head>
 <body>
@@ -119,15 +140,6 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   </div>
   <span class="source-tag">Source: Mountain Association tracking data &amp; Kentucky Lantern · Aug 2026</span>
 </header>
-<div class="about-banner">
-  This map is publicly sourced and maintained by the Mountain Association to track proposed data
-  centers, as well as local regulations and zoning ordinances regarding data centers. Existing
-  commercial hosting and colocation facilities listed on datacentermap.com are included as
-  operating projects and are not independently verified. All users are welcome to <span id="add-info-link-wrap"></span>,
-  <span id="report-problem-link-wrap"></span>,
-  or to be in touch with Mountain Association at <a href="mailto:energy@mtassociation.org">energy@mtassociation.org</a>.
-  New to this map? <a href="help.html">See how it works</a>.
-</div>
 <div class="stats-bar">
   <div class="stat"><strong id="stat-reg-counties">0</strong> counties/cities with regulations</div>
   <div class="stat-divider"></div>
@@ -145,6 +157,17 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   </div>
   <div id="county-tag-wrap"></div>
   <div id="no-reg-notice-wrap"></div>
+</div>
+<div class="layout">
+<aside class="side side-left">
+<div class="about-banner">
+  This map is publicly sourced and maintained by the Mountain Association to track proposed data
+  centers, as well as local regulations and zoning ordinances regarding data centers. Existing
+  commercial hosting and colocation facilities listed on datacentermap.com are included as
+  operating projects and are not independently verified. All users are welcome to <span id="add-info-link-wrap"></span>,
+  <span id="report-problem-link-wrap"></span>,
+  or to be in touch with Mountain Association at <a href="mailto:energy@mtassociation.org">energy@mtassociation.org</a>.
+  New to this map? <a href="help.html">See how it works</a>.
 </div>
 <div class="controls">
   <span class="ctrl-label">Regulation:</span>
@@ -164,6 +187,9 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <button class="pill" id="btn-gaspipe" onclick="toggleGasPipelines()">Show gas pipelines</button>
   <span class="badge-count" id="count">0 shown</span>
 </div>
+</aside>
+<div id="map"></div>
+<aside class="side side-right">
 <div class="legend">
   <div class="leg-group">
     <div class="leg-title">Regulations and moratoriums</div>
@@ -179,7 +205,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
     <div class="leg-item"><span class="leg-pin" id="leg-pin-rumored"></span>Rumored (<span id="cnt-leg-rumored"></span>)</div>
     <div class="leg-item"><span class="leg-pin" id="leg-pin-proposed"></span>Proposed (<span id="cnt-leg-proposed"></span>)</div>
     <div class="leg-item"><span class="leg-pin" id="leg-pin-operating"></span>Operating (<span id="cnt-leg-operating"></span>)</div>
-    <div class="leg-item"><span class="leg-pin" id="leg-pin-approx"></span>Dashed pin or ring: only county known (<span id="cnt-leg-countywide"></span>)</div>
+    <div class="leg-item"><span class="leg-pin" id="leg-pin-approx"></span>Dashed: only county known (<span id="cnt-leg-countywide"></span>)</div>
     <div class="leg-item" style="color:#888">Dots when zoomed out or crowded, pins when there is room.</div>
   </div>
   <div class="leg-group">
@@ -189,7 +215,8 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
     <span class="leg-credit">Data: KY DC tracking sheets, datacentermap.com, Kentucky Lantern, HIFLD (transmission, ~2025) &amp; EIA (pipelines, 2020 snapshot) · Map: OpenStreetMap</span>
   </div>
 </div>
-<div id="map"></div>
+</aside>
+</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // Major electric transmission lines, queried live from a public HIFLD
