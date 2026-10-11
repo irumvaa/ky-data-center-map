@@ -125,32 +125,19 @@ Completion date, Tenant, Duration) is capped at one sentence, 20 words or fewer.
 important doesn't fit in that space, it goes in Notes instead, not into the field itself. The
 idea: fields stay scannable, and anyone who wants more detail can check the source link.
 
-## General colocation/hosting listing (toggleable layer, off by default)
-"DC from datacentermap.com" shows 25 facilities pulled from all 12 of datacentermap.com's
-Kentucky markets, ordinary commercial colocation/hosting providers (Flexential, Lumen, Cogent,
-BluegrassNet, CBTS, CyrusOne, etc.), not the tracked hyperscale/AI projects this map otherwise
-covers. Popups show Operator, Developer, Status, Size/Capacity, Address, and a source link.
-Rendered as a square marker (never confused with the teardrop project pins), colored by the
-Status field: indigo for Proposed and magenta for Operational, reusing the exact same colors
-as the matching project stage since they're the same real-world concept on a different data
-layer; orange for Under construction; muted stone-gray for Unknown/unconfirmed (also the
-fallback for any unrecognized status text). Status text in the underlying data is inconsistent
-free text rather than a clean enum, so this is classified by keyword
-(`otherDCStatusKey()`), not an exact match. Both the marker color and the legend counts derive
-from that single classifier function, so they can't drift out of sync with each other.
-Coordinates are approximate for facilities without a specific address (city-level with
-manual jitter), exact where a street address was confirmed. Cross-checked against a manually
-researched spreadsheet, which caught a real error (an entry called "SUBTAC" was actually a
-different facility, KUSI Data Center, in Wilmore/Jessamine County, not Lexington/Fayette as
-originally listed) and added one facility (Gearheart Communications, Lexington) not previously
-found. Maysville, Harrodsburg, and Cave City's single listing still aren't included,
-datacentermap.com's page-view limit blocked enough direct access to confirm real facility
-names/addresses for those three; adding them from the spreadsheet risked pulling in listings
-that actually duplicate already-tracked projects there (Mason County Campus, Project Bluegrass,
-and 2001 Doyle Avenue all turned out to be the same real projects already on the main map).
-9 listings that duplicate already-tracked projects (TeraWulf/Hawesville, Carrollton/PowerHouse,
-Camp Ground Road, Project Lincoln, both Calvert City facilities, Riot Platforms Paducah,
-DartPoints Lexington/LexMark, TeraWulf Muskie/Ashland) were excluded.
+## Commercial colocation/hosting facilities (folded into projects)
+25 facilities from datacentermap.com's 12 Kentucky markets (Flexential, Lumen, Cogent,
+BluegrassNet, CBTS, CyrusOne, etc.) are counted as projects. They stay in their own sheet tab
+and in the `otherDataCenters` array, and `foldFacilitiesIntoProjects()` converts them into
+entries of `projects` when the page loads and again after a live data refresh, so there is no
+separate layer, toggle or icon. `facilityStage()` maps the free-text Status: anything containing
+"proposed" or "construction" becomes Proposed, everything else (including "inferred" and "not
+confirmed") becomes Operating, with the original status text kept in the popup notes.
+Popups say the listing comes from datacentermap.com and is not independently verified.
+Coordinates are approximate for facilities without a street address (city-level with manual
+jitter). Listings that duplicate already-tracked projects (TeraWulf/Hawesville,
+Carrollton/PowerHouse, Camp Ground Road, Project Lincoln, both Calvert City facilities, Riot
+Platforms Paducah, DartPoints Lexington/LexMark, TeraWulf Muskie/Ashland) were excluded.
 
 ## Transmission lines & gas pipelines (toggleable layers, off by default)
 - **Transmission lines**: HIFLD's Electric Power Transmission Lines dataset, sourced via an

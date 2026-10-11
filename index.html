@@ -132,10 +132,9 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 </header>
 <div class="about-banner">
   This map is publicly sourced and maintained by the Mountain Association to track proposed data
-  centers, as well as local regulations and zoning ordinances regarding data centers. The "DC from
-  datacentermap.com" layer separately includes other operating, proposed, and rumored data center
-  projects from a general industry directory, kept apart rather than mixed into the map's main
-  curated dataset. All users are welcome to <span id="add-info-link-wrap"></span>,
+  centers, as well as local regulations and zoning ordinances regarding data centers. Existing
+  commercial hosting and colocation facilities listed on datacentermap.com are included as
+  operating projects and are not independently verified. All users are welcome to <span id="add-info-link-wrap"></span>,
   <span id="report-problem-link-wrap"></span>,
   or to be in touch with Mountain Association at <a href="mailto:energy@mtassociation.org">energy@mtassociation.org</a>.
   New to this map? <a href="help.html">See how it works</a>.
@@ -170,7 +169,6 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <button class="pill" id="btn-stage-rumored" onclick="toggleStage('Rumored')"><span class="pill-pin" id="pin-rumored"></span>Rumored (<span id="cnt-stage-rumored"></span>)</button>
   <button class="pill" id="btn-stage-proposed" onclick="toggleStage('Proposed')"><span class="pill-pin" id="pin-proposed"></span>Proposed (<span id="cnt-stage-proposed"></span>)</button>
   <button class="pill" id="btn-stage-operating" onclick="toggleStage('Operating')"><span class="pill-pin" id="pin-operating"></span>Operating (<span id="cnt-stage-operating"></span>)</button>
-  <button class="pill" id="btn-other-dc" onclick="toggleOtherDC()"><span class="pill-pin-square" id="pin-other-dc"></span>DC from datacentermap.com (<span id="cnt-other-dc"></span>)</button>
   <div class="divider"></div>
   <span class="ctrl-label">Layers:</span>
   <button class="pill" id="btn-transmission" onclick="toggleTransmission()">Show transmission lines</button>
@@ -193,17 +191,13 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
     <div class="leg-item"><span class="leg-pin" id="leg-pin-proposed"></span>Proposed (<span id="cnt-leg-proposed"></span>)</div>
     <div class="leg-item"><span class="leg-pin" id="leg-pin-operating"></span>Operating (<span id="cnt-leg-operating"></span>)</div>
     <div class="leg-item"><span class="leg-pin" id="leg-pin-approx"></span>Dashed pin: only the county is known, not the exact site (<span id="cnt-leg-countywide"></span>)</div>
-    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc"></span>datacentermap.com: Operational (<span id="cnt-dc-operational"></span>)</div>
-    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-proposed"></span>datacentermap.com: Proposed (<span id="cnt-dc-proposed"></span>)</div>
-    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-construction"></span>datacentermap.com: Under construction (<span id="cnt-dc-construction"></span>)</div>
-    <div class="leg-item"><span class="leg-box-icon" id="leg-other-dc-unknown"></span>datacentermap.com: Unknown/unconfirmed (<span id="cnt-dc-unknown"></span>)</div>
   </div>
   <div class="leg-group">
     <div class="leg-title">Infrastructure</div>
     <div class="leg-item"><span class="leg-line" style="background:#2c3e50"></span>Transmission line</div>
     <div class="leg-item"><span class="leg-line" style="background:repeating-linear-gradient(90deg,#8B5A2B 0 6px,transparent 6px 9px)"></span>Gas pipeline</div>
   </div>
-  <span class="leg-credit">Data: KY DC tracking sheets, Kentucky Lantern, HIFLD (transmission, ~2025) &amp; EIA (pipelines, 2020 snapshot) · Map: OpenStreetMap</span>
+  <span class="leg-credit">Data: KY DC tracking sheets, datacentermap.com, Kentucky Lantern, HIFLD (transmission, ~2025) &amp; EIA (pipelines, 2020 snapshot) · Map: OpenStreetMap</span>
 </div>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -247,43 +241,45 @@ let projects = [{"name":"Camp Ground Road data center, Louisville","city":"Louis
 
 let allCounties=[...new Set(countyGeo.features.map(f=>f.properties.NAME))].sort();
 
-// ---------- OTHER DATA CENTERS (from datacentermap.com) ----------
-// A separate, lower-curation layer: general colocation/hosting facilities
-// listed on datacentermap.com's Kentucky directory, most of which are
-// ordinary commercial hosting providers unrelated to the AI/hyperscale
-// boom this map otherwise tracks. Kept as its own toggleable layer (off
-// by default) with a distinct marker, rather than mixed into the main
-// `projects` array, so it's clearly a different kind of data: a general
-// directory listing, not a vetted, sourced community/regulatory story.
-// Covers all 12 Kentucky markets datacentermap.com lists, gathered via
-// search (its site-wide page view limit blocked direct page fetches for
-// most of the session). A handful of listings duplicate already-tracked
-// projects (TeraWulf/Hawesville, Carrollton/PowerHouse, Camp Ground
-// Road/PowerHouse's 7 building sub-listings, Project Lincoln, both
-// Calvert City facilities, Riot Platforms Paducah, and DartPoints
-// Lexington/LexMark) and are excluded here since they're already
-// represented properly above. Some Louisville/Lexington/Florence
-// coordinates are city-level with manual jitter, not individually
-// geocoded per street address, see README for the precision caveat.
+// ---------- COMMERCIAL FACILITIES (from datacentermap.com) ----------
+// General colocation/hosting facilities listed on datacentermap.com's Kentucky
+// directory. These are folded into the main `projects` list at load time (see
+// foldFacilitiesIntoProjects below) so they are counted, filtered, searched
+// and clustered like every other project. The source list stays in its own
+// array and its own sheet tab so it is easy to refresh. Listings that
+// duplicated already-tracked projects were excluded when this list was built.
+// Some Louisville/Lexington/Florence coordinates are city-level with manual
+// jitter, not individually geocoded per street address, see README.
 let otherDataCenters = [{"name":"Flexential Louisville, Downtown","operator":"Flexential","address":"752 Barret Avenue, Louisville, KY 40204","lat":38.2447,"lng":-85.7391,"link":"https://www.datacentermap.com/usa/kentucky/louisville/flexential-louisville-downtown/","status":"Operational","developer":"Flexential","size":"","city":"Louisville","county":"Jefferson"},{"name":"Flexential Louisville, East","operator":"Flexential","address":"2101 Nelson Miller Parkway, Louisville, KY 40223","lat":38.2478,"lng":-85.5691,"link":"https://www.datacentermap.com/usa/kentucky/louisville/flexential-louisville/","status":"Operational","developer":"Flexential","size":"","city":"Louisville","county":"Jefferson"},{"name":"Louisville Enterprise Data Center","operator":"Aphorio Carter","address":"12901 Plantside Dr, Louisville, KY 40299","lat":38.2258,"lng":-85.5379,"link":"https://www.datacentermap.com/usa/kentucky/louisville/louisville-enterprise-data-center/","status":"Operational (built 2011)","developer":"Aphorio Carter","size":"30 acres, 102,500 sq ft, 1,000 kW critical power","city":"Louisville","county":"Jefferson"},{"name":"Simpsonville Enterprise Data Center","operator":"Aphorio Carter","address":"70 Kingbrook Pkwy, Simpsonville, KY 40067","lat":38.21667,"lng":-85.35139,"link":"https://www.datacentermap.com/usa/kentucky/louisville/simpsonville-enterprise-data-center/","status":"Operational","developer":"Aphorio Carter","size":"Tier III, LEED Gold certified","city":"Simpsonville","county":"Shelby"},{"name":"332 W. Broadway (Heyburn Building)","operator":"Multiple (Cogent Communications, Lumen)","address":"332 W. Broadway, Louisville, KY 40202","lat":38.2517,"lng":-85.7605,"link":"https://www.datacentermap.com/usa/kentucky/louisville/332-w-broadway/","status":"Operational (Cogent, Lumen); Unknown (building overall)","developer":"Multiple: Cogent Communications, Lumen","size":"Cogent suite: 1,503 sq ft raised floor, 60KVA UPS","city":"Louisville","county":"Jefferson"},{"name":"IgLou Data Center","operator":"IgLou Internet Services","address":"3315 Gilmore Industrial Blvd, Louisville, KY 40213","lat":38.1834,"lng":-85.7215,"link":"https://www.datacentermap.com/usa/kentucky/louisville/iglou-colocation/","status":"Operational","developer":"IgLou Internet Services","size":"","city":"Louisville","county":"Jefferson"},{"name":"Uniti Louisville (nGenX Colocation)","operator":"Uniti Wholesale","address":"929 Mason Ave, Louisville, KY 40204","lat":38.2379,"lng":-85.7247,"link":"https://www.datacentermap.com/usa/kentucky/louisville/ngenx---colocation/","status":"Operational","developer":"Uniti Wholesale","size":"","city":"Louisville","county":"Jefferson"},{"name":"BluegrassNet East Breckinridge","operator":"BluegrassNet","address":"321 E Breckinridge St, Louisville, KY 40203","lat":38.2469,"lng":-85.7521,"link":"https://www.datacentermap.com/usa/kentucky/louisville/east-breckinridge/","status":"Operational","developer":"BluegrassNet","size":"","city":"Louisville","county":"Jefferson"},{"name":"Lumen Louisville 2","operator":"Lumen","address":"715 S 7th St, Louisville, KY 40203","lat":38.2489,"lng":-85.7595,"link":"https://www.datacentermap.com/usa/kentucky/louisville/lumen-louisville-2/","status":"Operational","developer":"Lumen","size":"","city":"Louisville","county":"Jefferson"},{"name":"BluegrassNet Downtown Louisville","operator":"BluegrassNet","address":"800 S 4th St, Louisville, KY 40201","lat":38.2496,"lng":-85.7581,"link":"https://www.datacentermap.com/usa/kentucky/louisville/bluegrassnet-downtown-louisville/","status":"Operational","developer":"BluegrassNet","size":"","city":"Louisville","county":"Jefferson"},{"name":"Silica Broadband","operator":"Davey Holdings LLC","address":"12935 W U.S. Hwy 42, Prospect, KY 40059 (county uncertain: Prospect straddles Jefferson/Oldham)","lat":38.34694,"lng":-85.61028,"link":"https://www.datacentermap.com/usa/kentucky/louisville/davey-holdings/","status":"Operational (inferred)","developer":"Davey Holdings LLC","size":"","city":"Prospect","county":"Jefferson"},{"name":"Lumen Louisville 1","operator":"Lumen","address":"848 S. 8th Street, Louisville, KY 40203","lat":38.2482,"lng":-85.7612,"link":"https://www.datacentermap.com/usa/kentucky/louisville/level3-louisville/","status":"Operational (inferred)","developer":"Lumen (formerly Level 3 Communications)","size":"","city":"Louisville","county":"Jefferson"},{"name":"Data Canopy, Louisville","operator":"Data Canopy","address":"1208 Quality Choice Pl, Louisville, KY 40202","lat":38.2551,"lng":-85.7523,"link":"https://www.datacentermap.com/usa/kentucky/louisville/hosting-louisville/","status":"Operational (inferred)","developer":"Data Canopy (HOSTING)","size":"","city":"Louisville","county":"Jefferson"},{"name":"Quad State Internet PAH1 Data Center","operator":"Quad State Internet","address":"1212 Helen St, Paducah, KY 42001","lat":37.0834,"lng":-88.6001,"link":"https://www.datacentermap.com/usa/kentucky/paducah/quad-state-internet-data-center/","status":"Operational (inferred)","developer":"Quad State Internet LLC","size":"","city":"Paducah","county":"McCracken"},{"name":"Lost River Data Center (LRDC)","operator":"BGMU Fiber / Western Kentucky University","address":"2413 Nashville Rd, Bowling Green, KY 42101","lat":36.98167,"lng":-86.44444,"link":"https://www.datacentermap.com/usa/kentucky/bowling-green/","status":"Operational","developer":"BGMU Fiber / Western Kentucky University (joint venture)","size":"Tier II","city":"Bowling Green","county":"Warren"},{"name":"Ashland Technology Complex and Data Center","operator":"ATCDC","address":"500 Diederich Blvd, Russell, KY 41169","lat":38.51806,"lng":-82.69778,"link":"https://www.datacentermap.com/usa/kentucky/ashland/atcdc_tenants.html","status":"Operational","developer":"Ashland Technology Complex and Data Center","size":"189,000+ sq ft, Tier III","city":"Russell","county":"Greenup"},{"name":"CBTS Florence","operator":"CBTS","address":"987 Central Blvd, Florence, KY 41042","lat":38.99139,"lng":-84.64611,"link":"https://www.datacentermap.com/usa/kentucky/florence-ky/","status":"Operational","developer":"CBTS","size":"1 of 10 CBTS Midwest data centers","city":"Florence","county":"Boone"},{"name":"CyrusOne Florence","operator":"CyrusOne","address":"7190-7200 Industrial Road, Florence, KY 41042","lat":38.9944,"lng":-84.6398,"link":"https://www.datacentermap.com/usa/kentucky/florence-ky/","status":"Operational","developer":"CyrusOne Data Centers (NASDAQ: CONE)","size":"140,000 sq ft","city":"Florence","county":"Boone"},{"name":"EnergyNet Data Center","operator":"EnergyNet","address":"1820 E. 9th Street, Hopkinsville, KY 42240","lat":36.85472,"lng":-87.48889,"link":"https://www.datacentermap.com/usa/kentucky/hopkinsville/","status":"Operational","developer":"EnergyNet","size":"","city":"Hopkinsville","county":"Christian"},{"name":"East Kentucky Network Data Center","operator":"East Kentucky Network","address":"101 Technology Trail, Ivel, KY 41642","lat":37.59111,"lng":-82.66833,"link":"https://www.datacentermap.com/usa/kentucky/ivel/east-kentucky-network-data-center/","status":"Operational","developer":"East Kentucky Network","size":"16,700 sq ft","city":"Ivel","county":"Floyd"},{"name":"KUSI Data Center (SUBTAC)","operator":"Kentucky Underground Storage","address":"3830 Highbridge Rd, Wilmore, KY 40390 (Jessamine County, not Lexington/Fayette)","lat":37.8873,"lng":-84.6472,"link":"https://www.datacentermap.com/usa/kentucky/lexington/subtac/","status":"Operational (inferred)","developer":"Kentucky Underground Storage","size":"2,300 sq ft, 130 ft underground","city":"Wilmore","county":"Jessamine"},{"name":"Uniti Lexington (formerly Windstream)","operator":"Uniti Wholesale","address":"151 N Martin Luther King Blvd, Lexington, KY 40507","lat":38.0468,"lng":-84.5102,"link":"https://www.datacentermap.com/usa/kentucky/lexington/windstream-lexington/","status":"Operational (inferred)","developer":"Uniti Wholesale","size":"","city":"Lexington","county":"Fayette"},{"name":"BluegrassNet Downtown Lexington","operator":"BluegrassNet","address":"535 W 2nd St, Lexington, KY 40508","lat":38.0512,"lng":-84.4967,"link":"https://www.datacentermap.com/usa/kentucky/lexington/","status":"Operational (inferred)","developer":"BluegrassNet","size":"","city":"Lexington","county":"Fayette"},{"name":"QX.net Colocation","operator":"QX.net","address":"333 W Vine St, Lexington, KY 40507","lat":38.0451,"lng":-84.5054,"link":"https://www.datacentermap.com/usa/kentucky/lexington/","status":"Not confirmed in latest source, kept from earlier research","developer":"QX.net","size":"","city":"Lexington","county":"Fayette"},{"name":"Gearheart Communications","operator":"Gearheart Communications","address":"1003 Winchester Rd, Lexington, KY 40505","status":"Operational (inferred)","developer":"Gearheart Communications","size":"","lat":38.0589,"lng":-84.4712,"link":"https://www.datacentermap.com/usa/kentucky/lexington/gearheart-communications/","city":"Lexington","county":"Fayette"}];
-function otherDCPopup(d){
-  return `<div class="pop"><div class="pop-name">${d.name}</div><table class="pop-table">`
-    + popupRow("Operator", d.operator)
-    + popupRow("Developer", d.developer)
-    + popupRow("Status", d.status)
-    + popupRow("Size", d.size)
-    + popupRow("Address", d.address)
-    + popupRow("Source", `<a href="${d.link}" target="_blank" rel="noopener">datacentermap.com</a>`)
-    + `</table><div class="pop-notes">General commercial hosting/colocation listing from datacentermap.com, not independently verified or tied to a local regulation.</div>`
-    + popupCta("Report a correction to this listing", REPORT_FORM_URL) + `</div>`;
+function facilityStage(status){
+  const t=(status||'').toLowerCase();
+  if(t.includes('proposed') || t.includes('construction')) return 'Proposed';
+  return 'Operating';
 }
+function facilityToProject(d){
+  const note = 'Commercial hosting or colocation facility listed on datacentermap.com, not independently verified.'
+    + (d.status ? ' Status listed: ' + d.status + '.' : '');
+  return {
+    name:d.name, city:d.city||'', county:d.county||'', size:d.size||'',
+    developer:d.developer||d.operator||'', address:d.address||'',
+    stage:facilityStage(d.status), countyWide:false, lat:d.lat, lng:d.lng,
+    links:d.link ? [d.link] : [], notes:note, _facility:true
+  };
+}
+// Rebuilds the facility entries inside `projects` from `otherDataCenters`.
+// Safe to call again after a live data refresh (old facility entries are
+// dropped first, so nothing gets counted twice).
+function foldFacilitiesIntoProjects(){
+  projects = projects.filter(p=>!p._facility).concat(otherDataCenters.map(facilityToProject));
+}
+foldFacilitiesIntoProjects();
 let regCountiesSet=new Set();
 let regByCounty={};
 let cityOnlyCounties=new Set();
 let bothLevelCounties=new Set();
-let regClusterGroup=null, projClusterGroup=null, countyHighlightLayer=null, transmissionLayer=null, gasPipelineLayer=null, otherDCLayer=null;
+let regClusterGroup=null, projClusterGroup=null, countyHighlightLayer=null, transmissionLayer=null, gasPipelineLayer=null;
 let selectedCounty=null, suggestIdx=-1;
-let regFilter='all', showProjects=true, stageFilters=new Set(), showTransmission=false, showGasPipelines=false, showOtherDC=false;
+let regFilter='all', showProjects=true, stageFilters=new Set(), showTransmission=false, showGasPipelines=false;
 
 function normKey(s){return (s||"").trim().toLowerCase();}
 
@@ -397,15 +393,11 @@ function fuzzyIncludes(blob, term){
 function buildSearchIndex(){
   projects.forEach(p=>{
     p._blob = normalizeSearchText([p.name,p.city,p.county,p.developer,p.stage,p.size,p.tenant,
-               p.notes,p.pz,p.utility,expandUtilityStatus(p.utility),p.tariff,p.completionDate]
+               p.notes,p.address,p.pz,p.utility,expandUtilityStatus(p.utility),p.tariff,p.completionDate]
               .filter(Boolean).join(' '));
   });
   regulations.forEach(r=>{
     r._blob = normalizeSearchText([r.county,r.city,r.type,r.notes,r.period,r.level]
-              .filter(Boolean).join(' '));
-  });
-  otherDataCenters.forEach(d=>{
-    d._blob = normalizeSearchText([d.name,d.operator,d.developer,d.status,d.size,d.address,d.city,d.county]
               .filter(Boolean).join(' '));
   });
   // Per-county blob: lets a plain county-name search also surface counties
@@ -420,10 +412,6 @@ function buildSearchIndex(){
   projects.forEach(p=>{
     const key = normKey(p.county);
     countyContentBlob[key] = (countyContentBlob[key] || '') + ' ' + p._blob;
-  });
-  otherDataCenters.forEach(d=>{
-    const key = normKey(d.county);
-    countyContentBlob[key] = (countyContentBlob[key] || '') + ' ' + d._blob;
   });
 
   // City lookup: every city mentioned anywhere (regulations, projects, or
@@ -442,7 +430,6 @@ function buildSearchIndex(){
   }
   regulations.forEach(r=> noteCity(r.city, r.county, r.lat, r.lng));
   projects.forEach(p=> { if(!p.countyWide) noteCity(p.city, p.county, p.lat, p.lng); });
-  otherDataCenters.forEach(d=> noteCity(d.city, d.county, d.lat, d.lng));
 }
 buildSearchIndex();
 
@@ -460,13 +447,10 @@ function blobMatchesAll(blob, terms){ return terms.every(t=>fuzzyIncludes(blob, 
 function updateStatsBar(){
   document.getElementById('stat-reg-counties').textContent = regCountiesSet.size;
   document.getElementById('stat-no-reg').textContent = allCounties.length - regCountiesSet.size;
-  // Always shows the combined total, independent of whether the datacentermap.com
-  // toggle happens to be on right now — this is a standing count, not tied to
-  // what's currently plotted on screen (that's what the right-side badge is for).
-  const total = projects.length + otherDataCenters.length;
-  document.getElementById('stat-projects').textContent = total;
+  const byStage = st => projects.filter(p=>p.stage===st).length;
+  document.getElementById('stat-projects').textContent = projects.length;
   document.getElementById('stat-projects-breakdown').textContent =
-    ` (${projects.length} tracked + ${otherDataCenters.length} from datacentermap.com)`;
+    ` (${byStage('Rumored')} rumored, ${byStage('Proposed')} proposed, ${byStage('Operating')} operating)`;
 }
 updateStatsBar();
 
@@ -588,13 +572,15 @@ function projectPopup(p){
   let html = `<div class="pop"><div class="pop-name">${p.name}</div><div class="pop-badges">${stageBadge}${cwBadge}</div><table class="pop-table">`;
   html += popupRow("Location", loc);
   if(p.address) html += popupRow("Address", p.address);
-  html += popupRow("Size", p.size);
+  if(!p._facility || p.size) html += popupRow("Size", p.size);
   html += popupRow("Developer", p.developer);
-  html += popupRow("Planning &amp; zoning", p.pz);
-  html += popupRow("Utility status", expandUtilityStatus(p.utility));
-  html += popupRow("Tariff", p.tariff);
-  html += popupRow("Completion date", p.completionDate);
-  html += popupRow("Tenant", p.tenant);
+  if(!p._facility){
+    html += popupRow("Planning &amp; zoning", p.pz);
+    html += popupRow("Utility status", expandUtilityStatus(p.utility));
+    html += popupRow("Tariff", p.tariff);
+    html += popupRow("Completion date", p.completionDate);
+    html += popupRow("Tenant", p.tenant);
+  }
   const linkHtml = (p.links && p.links.length)
     ? p.links.map((l,i)=> l.startsWith('http') ? `<a href="${l}" target="_blank" rel="noopener">source ${i+1}</a>` : `<span style="color:#999">${l}</span>`).join(', ')
     : "";
@@ -729,62 +715,6 @@ function projectIcon(p){
   return L.divIcon({className:'', html:projectIconSvg(stageColor, p.countyWide), iconSize:[28,35], iconAnchor:[14,35], popupAnchor:[0,-37]});
 }
 
-// Distinct square/chip marker for the general datacentermap.com directory
-// layer — deliberately different from the teardrop project pins so it
-// reads as "reference data," not a tracked, sourced community story.
-// Classifies the free-text `status` field from the directory-layer
-// spreadsheet into a color. Status text is inconsistent ("Operational",
-// "Operational (built 2011)", "Not confirmed in latest source"...), so this
-// matches on keywords rather than an exact enum, with a safe default for
-// anything unrecognized.
-// Single source of truth for classifying the free-text status field —
-// both the marker color and the legend counts derive from this, so they
-// can never drift out of sync the way a separate reverse-color-lookup did.
-function otherDCStatusKey(status){
-  const s = (status||'').toLowerCase();
-  if(s.includes('proposed')) return 'proposed';
-  if(s.includes('construction')) return 'construction';
-  if(s.includes('unknown') || s.includes('not confirmed')) return 'unknown';
-  if(s.includes('operational')) return 'operational';
-  return 'unknown'; // fallback for anything unrecognized
-}
-const OTHER_DC_STATUS_COLORS = {
-  proposed: '#4338CA',    // indigo, matches project stage "Proposed"
-  construction: '#EA580C', // orange
-  unknown: '#78716C',     // muted stone, signals uncertainty
-  operational: '#D1239D', // magenta, matches project stage "Operating"
-};
-function otherDCStatusColor(status){
-  return OTHER_DC_STATUS_COLORS[otherDCStatusKey(status)];
-}
-function otherDCIconSvg(color){
-  const fill = color || '#64748B';
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
-    <rect x="1" y="1" width="16" height="16" rx="3" fill="${fill}" stroke="#2b2b2b" stroke-width="1.2"/>
-    <rect x="5" y="4.5" width="8" height="9" rx="1" fill="none" stroke="white" stroke-width="1.1"/>
-    <line x1="5" y1="7.5" x2="13" y2="7.5" stroke="white" stroke-width="0.9"/>
-    <line x1="5" y1="10.5" x2="13" y2="10.5" stroke="white" stroke-width="0.9"/>
-  </svg>`;
-}
-function otherDCIcon(d){
-  return L.divIcon({className:'', html:otherDCIconSvg(otherDCStatusColor(d.status)), iconSize:[18,18], iconAnchor:[9,9], popupAnchor:[0,-11]});
-}
-function renderOtherDataCenters(){
-  if(otherDCLayer) map.removeLayer(otherDCLayer);
-  if(!showOtherDC){ otherDCLayer = null; return; }
-  const markers = otherDataCenters.map(d =>
-    L.marker([d.lat, d.lng], {icon: otherDCIcon(d)}).bindPopup(otherDCPopup(d), {maxWidth: 280})
-  );
-  otherDCLayer = L.layerGroup(markers).addTo(map);
-}
-function toggleOtherDC(){
-  showOtherDC = !showOtherDC;
-  document.getElementById('btn-other-dc').classList.toggle('active', showOtherDC);
-  renderOtherDataCenters();
-  updateStatsBar();
-  updateCount();
-}
-
 function renderRegulations(){
   if(regClusterGroup) map.removeLayer(regClusterGroup);
   const markers=[];
@@ -825,8 +755,7 @@ function updateCount(){
     if(stageFilters.size>0 && !stageFilters.has(p.stage)) return false;
     return true;
   }).length : 0;
-  const dcShown = showOtherDC ? otherDataCenters.length : 0;
-  const total = shown + dcShown;
+  const total = shown;
   document.getElementById('count').textContent = total + ' shown' + (selectedCounty? ' in '+selectedCounty+' County':'');
 }
 
@@ -844,7 +773,6 @@ function updateFilterCounts(){
   document.getElementById('cnt-stage-rumored').textContent = projects.filter(p=>p.stage==='Rumored').length;
   document.getElementById('cnt-stage-proposed').textContent = projects.filter(p=>p.stage==='Proposed').length;
   document.getElementById('cnt-stage-operating').textContent = projects.filter(p=>p.stage==='Operating').length;
-  document.getElementById('cnt-other-dc').textContent = otherDataCenters.length;
 
   // Reuses the same county-state sets computeRegStats() already built, so
   // these counts can never drift out of sync with what's actually shaded
@@ -866,13 +794,6 @@ function updateFilterCounts(){
   document.getElementById('cnt-leg-cityonly').textContent = cityOnlyN;
   document.getElementById('cnt-leg-both').textContent = bothN;
   document.getElementById('cnt-leg-none').textContent = allCounties.length - regCountiesSet.size;
-
-  const dcCounts = { proposed:0, construction:0, unknown:0, operational:0 };
-  otherDataCenters.forEach(d=>{ dcCounts[otherDCStatusKey(d.status)]++; });
-  document.getElementById('cnt-dc-operational').textContent = dcCounts.operational;
-  document.getElementById('cnt-dc-proposed').textContent = dcCounts.proposed;
-  document.getElementById('cnt-dc-construction').textContent = dcCounts.construction;
-  document.getElementById('cnt-dc-unknown').textContent = dcCounts.unknown;
 }
 
 function renderAll(){
@@ -882,7 +803,6 @@ function renderAll(){
   updateFilterCounts();
   renderRegulations();
   renderProjects();
-  renderOtherDataCenters();
 }
 
 function setRegFilter(val){
@@ -1053,9 +973,6 @@ function onSearchInput(){
     .filter(o=>terms.length && blobMatchesAll(o.r._blob, terms))
     .filter(o=>!(o.r.county.toLowerCase().startsWith(qForCountyPrefix) && terms.length===1)); // don't duplicate a plain county-name search
 
-  const facilityMatches = otherDataCenters.map((d,i)=>({d,i}))
-    .filter(o=>terms.length && blobMatchesAll(o.d._blob, terms));
-
   // "county-wide" / "city-level" are structured concepts (a regulation's
   // `level` field, or a project's `countyWide` flag), not just words that
   // happen to appear somewhere in notes text — free text regularly says
@@ -1087,7 +1004,7 @@ function onSearchInput(){
   const cityMatches = Object.keys(cityToCounty).filter(key=>key.startsWith(q)).slice(0,3);
 
   const sugEl=document.getElementById('suggestions');
-  if(!countyMatches.length && !projMatches.length && !regMatches.length && !facilityMatches.length && !cityMatches.length){ sugEl.classList.remove('open'); return; }
+  if(!countyMatches.length && !projMatches.length && !regMatches.length && !cityMatches.length){ sugEl.classList.remove('open'); return; }
   suggestIdx=-1;
   let html='';
   cityMatches.forEach(key=>{
@@ -1112,11 +1029,6 @@ function onSearchInput(){
     const label = fieldMatchLabel([['developer',p.developer],['tenant',p.tenant],['notes',p.notes],['stage',p.stage]], terms);
     html += `<div class="suggestion-item" data-type="project" data-value="${o.i}"><span class="sug-type-tag sug-tag-project">Project</span>${p.name}<span class="sug-sub">${p.county} County${label?' · matched: '+label:''}</span></div>`;
   });
-  facilityMatches.slice(0,4).forEach(o=>{
-    const d=o.d;
-    const label = fieldMatchLabel([['developer',d.developer],['operator',d.operator],['status',d.status],['address',d.address]], terms);
-    html += `<div class="suggestion-item" data-type="facility" data-value="${o.i}"><span class="sug-type-tag" style="background:#e6e9ee;color:#3f4a5a;">Facility</span>${d.name}<span class="sug-sub">${d.city}, ${d.county} County${label?' · matched: '+label:''}</span></div>`;
-  });
   sugEl.innerHTML=html;
   sugEl.querySelectorAll('.suggestion-item').forEach(el=>{
     el.addEventListener('click', ()=>{
@@ -1124,7 +1036,6 @@ function onSearchInput(){
       if(t==='county') selectCounty(v);
       else if(t==='project') selectProject(parseInt(v));
       else if(t==='regulation') selectRegulation(parseInt(v));
-      else if(t==='facility') selectFacility(parseInt(v));
       else if(t==='city') selectCity(v);
     });
   });
@@ -1141,7 +1052,6 @@ function onSearchKey(e){
     const t=el.dataset.type, v=el.dataset.value;
     if(t==='county') selectCounty(v);
     else if(t==='regulation') selectRegulation(parseInt(v));
-    else if(t==='facility') selectFacility(parseInt(v));
     else if(t==='city') selectCity(v);
     else selectProject(parseInt(v));
   }
@@ -1195,19 +1105,6 @@ function selectRegulation(idx){
   map.setView([r.lat,r.lng], 11);
   L.popup({maxWidth:280}).setLatLng([r.lat,r.lng]).setContent(regulationPopup(r)).openOn(map);
 }
-function selectFacility(idx){
-  const d=otherDataCenters[idx];
-  if(!d) return;
-  document.getElementById('county-search').value='';
-  document.getElementById('search-clear').classList.remove('visible');
-  closeSuggestions();
-  selectedCounty=null;
-  document.getElementById('county-tag-wrap').innerHTML = `<div class="county-tag">${d.name} <button onclick="clearSearch()">✕</button></div>`;
-  document.getElementById('no-reg-notice-wrap').innerHTML='';
-  if(countyHighlightLayer){ map.removeLayer(countyHighlightLayer); countyHighlightLayer=null; }
-  map.setView([d.lat,d.lng], 13);
-  L.popup({maxWidth:280}).setLatLng([d.lat,d.lng]).setContent(otherDCPopup(d)).openOn(map);
-}
 function selectCity(cityKey){
   const coords = cityCoords[cityKey];
   if(!coords) return;
@@ -1251,11 +1148,6 @@ document.getElementById('leg-pin-operating').innerHTML = projectIconSvg('#D1239D
 document.getElementById('leg-pin-approx').innerHTML = projectIconSvg('#6b7280', true);
 document.getElementById('pin-proposed').innerHTML = projectIconSvg('#4338CA', false);
 document.getElementById('pin-operating').innerHTML = projectIconSvg('#D1239D', false);
-document.getElementById('pin-other-dc').innerHTML = otherDCIconSvg();
-document.getElementById('leg-other-dc').innerHTML = otherDCIconSvg(otherDCStatusColor('Operational'));
-document.getElementById('leg-other-dc-proposed').innerHTML = otherDCIconSvg(otherDCStatusColor('Proposed'));
-document.getElementById('leg-other-dc-construction').innerHTML = otherDCIconSvg(otherDCStatusColor('Under construction'));
-document.getElementById('leg-other-dc-unknown').innerHTML = otherDCIconSvg(otherDCStatusColor('Unknown'));
 
 // General "add" / "report" entry points in the description banner, not
 // tied to any specific pin (unlike the ones inside popups). Only shown
@@ -1298,6 +1190,7 @@ if (DATA_SOURCE_URL) {
         changed = true;
       }
       if (changed) {
+        foldFacilitiesIntoProjects();
         dropExpiredMoratoria();
         buildSearchIndex();
         renderAll();
