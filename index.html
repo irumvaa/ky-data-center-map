@@ -103,12 +103,15 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .pop-cta a{font-size:11.5px;color:#7d3c98;font-weight:600;text-decoration:none}
 .pop-cta a:hover{text-decoration:underline}
 .pop-links a{font-size:11px;color:#7d3c98;margin-right:8px}
-.marker-cluster-small{background-color:rgba(165,105,189,0.3)}
-.marker-cluster-small div{background-color:rgba(165,105,189,0.7);color:#fff;font-weight:700}
-.marker-cluster-medium{background-color:rgba(142,68,173,0.3)}
-.marker-cluster-medium div{background-color:rgba(142,68,173,0.7);color:#fff;font-weight:700}
-.marker-cluster-large{background-color:rgba(125,60,152,0.3)}
-.marker-cluster-large div{background-color:rgba(125,60,152,0.8);color:#fff;font-weight:700}
+.marker-cluster{border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45)}
+.marker-cluster div{font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;margin:0;width:100%;height:100%;border-radius:50%}
+.marker-cluster span{line-height:1}
+.marker-cluster-small{background-color:rgba(142,68,173,0.35)}
+.marker-cluster-small div{background-color:rgba(142,68,173,0.95);color:#fff;font-weight:800}
+.marker-cluster-medium{background-color:rgba(125,60,152,0.35)}
+.marker-cluster-medium div{background-color:rgba(110,52,138,0.97);color:#fff;font-weight:800}
+.marker-cluster-large{background-color:rgba(95,40,125,0.35)}
+.marker-cluster-large div{background-color:rgba(80,30,108,0.98);color:#fff;font-weight:800}
 @media(max-width:600px){header{padding:12px 14px}#map{height:calc(100vh - 240px)}.controls{padding:8px 12px;gap:4px}.stats-bar{gap:10px;padding:6px 12px}}
 </style>
 </head>
@@ -798,11 +801,12 @@ function renderRegulations(){
 function renderProjects(){
   if(projClusterGroup) map.removeLayer(projClusterGroup);
   if(!showProjects){ projClusterGroup = L.layerGroup([]).addTo(map); updateCount(); return; }
-  projClusterGroup = L.markerClusterGroup({showCoverageOnHover:false, maxClusterRadius:45,
+  projClusterGroup = L.markerClusterGroup({showCoverageOnHover:false, maxClusterRadius:28,
     iconCreateFunction: cluster=>{
       const count=cluster.getChildCount();
       const size = count<4?'small':count<8?'medium':'large';
-      return L.divIcon({html:`<div><span>${count}</span></div>`, className:`marker-cluster marker-cluster-${size}`, iconSize:[38,38]});
+      const px = size==='small'?34:size==='medium'?40:46;
+      return L.divIcon({html:`<div title="${count} projects here. Click to zoom in."><span>${count}</span></div>`, className:`marker-cluster marker-cluster-${size}`, iconSize:[px,px]});
     }
   });
   projects.forEach(p=>{
