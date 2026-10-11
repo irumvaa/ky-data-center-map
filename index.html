@@ -204,6 +204,8 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <span class="ctrl-label">Layers:</span>
   <button class="pill" id="btn-transmission" onclick="toggleTransmission()">Show transmission lines</button>
   <button class="pill" id="btn-gaspipe" onclick="toggleGasPipelines()">Show gas pipelines</button>
+  <div class="divider"></div>
+  <button class="pill" id="btn-share" onclick="copyViewLink()">Copy link to this view</button>
   <span class="badge-count" id="count">0 shown</span>
 </div>
 </aside>
@@ -701,24 +703,35 @@ function countyTooltip_(f){
   }
   return `<strong>${f.properties.NAME} County</strong><br>${status}`;
 }
+function countyProjectsHtml(name){
+  const rows=[];
+  projects.forEach((p,i)=>{
+    if(normKey(p.county)!==normKey(name)) return;
+    const col = stageColor(p);
+    rows.push(`<li style="margin:3px 0"><a href="#" onclick="selectProject(${i});return false" style="color:#333;text-decoration:none"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px"></span>${p.name}</a> <span style="color:#888">${p.stage}${p.size&&p.size.length<=14?', '+p.size:''}</span></li>`);
+  });
+  const body = rows.length ? `<ul style="margin:6px 0 0 4px;list-style:none;padding:0">${rows.join('')}</ul>` : `<div style="margin-top:4px;color:#888">No data center projects tracked in this county.</div>`;
+  return `<div class="pop" style="padding-top:0;margin-top:-4px"><div style="padding-top:8px;border-top:1px dashed #ddd;font-size:12px"><strong>Projects in ${name} County (${rows.length})</strong>${body}</div></div>`;
+}
 function showCountyPopup(f, latlng){
+  const more = countyProjectsHtml(f.properties.NAME);
   const reg = f.properties.reg;
   if(f.properties.both_levels && reg){
     const cityRegs = regulations.filter(r=>normKey(r.level)==='city' && normKey(r.county)===normKey(f.properties.NAME));
     const list = cityRegs.map(r=>`<li>${r.city}: ${r.type}${r.period ? ' ('+r.period+')' : ''}</li>`).join('');
     let html = regulationPopup(reg);
     html = html.replace('</div>', `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ddd;font-size:12px;">Also has separate city-level regulation(s) in this county:<ul style="margin:6px 0 0 16px;">${list}</ul></div></div>`);
-    L.popup({maxWidth:300}).setLatLng(latlng).setContent(html).openOn(map);
+    L.popup({maxWidth:300}).setLatLng(latlng).setContent(html+more).openOn(map);
   } else if(reg){
-    L.popup({maxWidth:280}).setLatLng(latlng).setContent(regulationPopup(reg)).openOn(map);
+    L.popup({maxWidth:280}).setLatLng(latlng).setContent(regulationPopup(reg)+more).openOn(map);
   } else if(f.properties.city_only){
     const cityRegs = regulations.filter(r=>normKey(r.level)==='city' && normKey(r.county)===normKey(f.properties.NAME));
     const list = cityRegs.map(r=>`<li>${r.city}: ${r.type}${r.period ? ' ('+r.period+')' : ''}</li>`).join('');
     L.popup({maxWidth:280}).setLatLng(latlng)
-      .setContent(`<div class="pop"><div class="pop-name">${f.properties.NAME} County</div>No county-wide regulation. City-level regulation(s) inside this county:<ul style="margin:6px 0 0 16px;font-size:12px;">${list}</ul></div>`)
+      .setContent(`<div class="pop"><div class="pop-name">${f.properties.NAME} County</div>No county-wide regulation. City-level regulation(s) inside this county:<ul style="margin:6px 0 0 16px;font-size:12px;">${list}</ul></div>`+more)
       .openOn(map);
   } else {
-    L.popup({maxWidth:280}).setLatLng(latlng).setContent(countyNoRegPopup(f.properties.NAME)).openOn(map);
+    L.popup({maxWidth:280}).setLatLng(latlng).setContent(countyNoRegPopup(f.properties.NAME)+more).openOn(map);
   }
 }
 const countyLayer = L.geoJSON(countyGeo,{
@@ -1281,6 +1294,56 @@ if (DATA_SOURCE_URL) {
       console.warn('Live data unavailable, showing embedded fallback data instead.', err);
     });
 }
+
+// Shareable view: the address bar keeps the current filters, selected county
+// and map position, so copying the URL (or the button) reproduces this view.
+const REG_KEYS=['all','moratorium','ordinance','pending'];
+function viewToHash(){
+  const q=new URLSearchParams();
+  if(regFilter!=='all') q.set('reg',regFilter);
+  if(stageFilters.size) q.set('stage',[...stageFilters].join(','));
+  if(!showProjects) q.set('proj','0');
+  if(showTransmission) q.set('tx','1');
+  if(showGasPipelines) q.set('gas','1');
+  if(selectedCounty) q.set('county',selectedCounty);
+  const c=map.getCenter();
+  q.set('view',c.lat.toFixed(3)+','+c.lng.toFixed(3)+','+map.getZoom());
+  return q.toString();
+}
+let hashTimer=null;
+function syncHash(){
+  clearTimeout(hashTimer);
+  hashTimer=setTimeout(()=>{ try{ history.replaceState(null,'','#'+viewToHash()); }catch(e){} },250);
+}
+function applyHash(){
+  const q=new URLSearchParams(location.hash.replace(/^#/,''));
+  if(![...q.keys()].length) return;
+  const reg=q.get('reg'); if(REG_KEYS.includes(reg)) setRegFilter(reg);
+  (q.get('stage')||'').split(',').forEach(st=>{ if(['Rumored','Proposed','Operating'].includes(st) && !stageFilters.has(st)) toggleStage(st); });
+  if(q.get('proj')==='0' && showProjects) toggleProjects();
+  if(q.get('tx')==='1' && !showTransmission) toggleTransmission();
+  if(q.get('gas')==='1' && !showGasPipelines) toggleGasPipelines();
+  const county=q.get('county');
+  if(county && allCounties.includes(county)) selectCounty(county);
+  const v=(q.get('view')||'').split(',').map(Number);
+  if(v.length===3 && v.every(Number.isFinite) && v[0]>35 && v[0]<41 && v[1]>-91 && v[1]<-80 && v[2]>=5 && v[2]<=18){
+    map.setView([v[0],v[1]],v[2]);
+  }
+}
+function copyViewLink(){
+  const url=location.href.split('#')[0]+'#'+viewToHash();
+  try{ history.replaceState(null,'','#'+viewToHash()); }catch(e){}
+  const b=document.getElementById('btn-share');
+  const done=()=>{ b.textContent='Link copied'; setTimeout(()=>{b.textContent='Copy link to this view';},1800); };
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(done,()=>{}); return; }
+  const t=document.createElement('textarea'); t.value=url; document.body.appendChild(t); t.select();
+  try{ document.execCommand('copy'); done(); }catch(e){} document.body.removeChild(t);
+}
+map.on('moveend', syncHash);
+['setRegFilter','toggleStage','toggleProjects','toggleTransmission','toggleGasPipelines','selectCounty','clearSearch','selectCity','selectProject'].forEach(n=>{
+  const f=window[n]; window[n]=function(){ const r=f.apply(this,arguments); syncHash(); return r; };
+});
+applyHash();
 </script>
 </body>
 </html>
