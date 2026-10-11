@@ -448,6 +448,23 @@ function updateStatsBar(){
 }
 updateStatsBar();
 
+function regTypeKey(type){
+  const t=normKey(type);
+  if(t==='moratorium') return 'moratorium';
+  if(t==='ordinance') return 'ordinance';
+  if(t==='pending' || t==='pending or proposed' || t==='pending/proposed') return 'pending';
+  return '';
+}
+function regMatchesFilter(r){ return regFilter==='all' || regTypeKey(r.type)===regFilter; }
+// For one county polygon, says whether its county-wide rule and/or any
+// city rule inside it match the active Regulation filter.
+function countyFilterState(f){
+  const key=normKey(f.properties.NAME);
+  const countyReg=f.properties.reg;
+  const countyMatch=!!(countyReg && regMatchesFilter(countyReg));
+  const cityMatch=regulations.some(r=>normKey(r.level)==='city' && normKey(r.county)===key && regMatchesFilter(r));
+  return {countyMatch, cityMatch};
+}
 function regColor(type){
   const t=normKey(type);
   if(t==='moratorium') return '#0072B2'; // blue
@@ -599,6 +616,18 @@ function stripePatternId(type){ return 'stripe-' + normKey(type).replace(/[^a-z]
 
 function countyStyle_(f){
   if(!f.properties.has_reg) return {color:'#7a7a7a', weight:1.2, fillColor:'#999999', fillOpacity:0.12};
+  if(regFilter!=='all'){
+    const {countyMatch, cityMatch} = countyFilterState(f);
+    if(!countyMatch && !cityMatch) return {color:'#cfcfcf', weight:0.8, fillColor:'#999999', fillOpacity:0.03};
+    if(countyMatch && cityMatch){
+      return {color:regColor(f.properties.reg.type), weight:1.6, fillColor:`url(#${stripePatternId(f.properties.reg.type)})`, fillOpacity:0.55};
+    }
+    if(countyMatch){
+      const c=regColor(f.properties.reg.type);
+      return {color:c, weight:1.4, fillColor:c, fillOpacity:0.35};
+    }
+    return {color:'#a66d00', weight:1.3, fillColor:'#E69F00', fillOpacity:0.28};
+  }
   if(f.properties.both_levels && f.properties.reg){
     const patternId = stripePatternId(f.properties.reg.type);
     return {color:regColor(f.properties.reg.type), weight:1.6, fillColor:`url(#${patternId})`, fillOpacity:0.55};
@@ -738,7 +767,7 @@ function renderRegulations(){
   if(regClusterGroup) map.removeLayer(regClusterGroup);
   const markers=[];
   regulations.forEach(r=>{
-    if(regFilter!=='all' && normKey(r.type)!==regFilter) return;
+    if(!regMatchesFilter(r)) return;
     if(normKey(r.level)==='city' && r.lat!=null){
       const m = L.marker([r.lat,r.lng], {icon: cityRegMarkerIcon(regColor(r.type))}).bindPopup(regulationPopup(r));
       markers.push(m);
@@ -779,10 +808,14 @@ function updateCount(){
 }
 
 function updateFilterCounts(){
-  document.getElementById('cnt-reg-all').textContent = regulations.length;
-  document.getElementById('cnt-reg-pending').textContent = regulations.filter(r=>r.type==='Pending/Proposed').length;
-  document.getElementById('cnt-reg-moratorium').textContent = regulations.filter(r=>r.type==='Moratorium').length;
-  document.getElementById('cnt-reg-ordinance').textContent = regulations.filter(r=>r.type==='Ordinance').length;
+  const breakout = (list)=>{
+    const city=list.filter(r=>normKey(r.level)==='city').length;
+    return list.length + ' (' + (list.length-city) + ' county, ' + city + ' city)';
+  };
+  document.getElementById('cnt-reg-all').textContent = breakout(regulations);
+  document.getElementById('cnt-reg-pending').textContent = breakout(regulations.filter(r=>regTypeKey(r.type)==='pending'));
+  document.getElementById('cnt-reg-moratorium').textContent = breakout(regulations.filter(r=>regTypeKey(r.type)==='moratorium'));
+  document.getElementById('cnt-reg-ordinance').textContent = breakout(regulations.filter(r=>regTypeKey(r.type)==='ordinance'));
 
   document.getElementById('cnt-proj-all').textContent = projects.length;
   document.getElementById('cnt-stage-rumored').textContent = projects.filter(p=>p.stage==='Rumored').length;
@@ -794,8 +827,15 @@ function updateFilterCounts(){
   // these counts can never drift out of sync with what's actually shaded
   // on the map.
   document.getElementById('cnt-leg-countywide').textContent = projects.filter(p=>p.countyWide).length;
-  document.getElementById('cnt-leg-cityonly').textContent = cityOnlyCounties.size;
-  document.getElementById('cnt-leg-both').textContent = bothLevelCounties.size;
+  let cityOnlyN=0, bothN=0;
+  countyGeo.features.forEach(f=>{
+    if(!f.properties.has_reg) return;
+    const {countyMatch, cityMatch} = countyFilterState(f);
+    if(cityMatch && !countyMatch) cityOnlyN++;
+    else if(cityMatch && countyMatch) bothN++;
+  });
+  document.getElementById('cnt-leg-cityonly').textContent = cityOnlyN;
+  document.getElementById('cnt-leg-both').textContent = bothN;
   document.getElementById('cnt-leg-none').textContent = allCounties.length - regCountiesSet.size;
 
   const dcCounts = { proposed:0, construction:0, unknown:0, operational:0 };
@@ -820,6 +860,8 @@ function setRegFilter(val){
   regFilter=val;
   ['all','moratorium','ordinance','pending'].forEach(id=>document.getElementById('btn-reg-'+id).classList.remove('active'));
   document.getElementById('btn-reg-'+val).classList.add('active');
+  refreshCountyLayer();
+  updateFilterCounts();
   renderRegulations();
 }
 function toggleProjects(){
