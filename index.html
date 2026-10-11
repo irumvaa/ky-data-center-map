@@ -738,7 +738,9 @@ function projectPinIcon(p, dx, dy, w){
   const svg = projectIconSvg(stageColor(p), p.countyWide).replace('width="28" height="35"', `width="${w}" height="${h}"`);
   return L.divIcon({className:'', html:svg, iconSize:[w,h], iconAnchor:[w/2-dx,h-dy], popupAnchor:[dx,-h-2+dy]});
 }
+let lastRenderedZoom = null;
 function renderProjects(){
+  lastRenderedZoom = map.getZoom();
   if(projClusterGroup) map.removeLayer(projClusterGroup);
   projClusterGroup = L.layerGroup();
   if(showProjects){
@@ -763,7 +765,7 @@ function renderProjects(){
           dx = Math.round(r*Math.cos(ang)); dy = Math.round(r*Math.sin(ang));
         }
         const m = L.marker([p.lat,p.lng], {icon: g.asPin ? projectPinIcon(p,dx,dy,w) : projectDotIcon(p,dx,dy)})
-          .bindPopup(projectPopup(p),{maxWidth:330});
+          .bindPopup(()=>projectPopup(p),{maxWidth:330});
         projClusterGroup.addLayer(m);
       });
     });
@@ -772,7 +774,12 @@ function renderProjects(){
   updateCount();
 }
 // Recompute which projects are dots and which are pins at every zoom change.
-map.on('zoomend', renderProjects);
+map.on('zoomend', ()=>{
+  const z = map.getZoom();
+  // Below MIN_PIN_ZOOM everything is a fixed-size dot, so nothing changes.
+  if(lastRenderedZoom!==null && z<MIN_PIN_ZOOM && lastRenderedZoom<MIN_PIN_ZOOM) return;
+  lastRenderedZoom = z; renderProjects();
+});
 
 function updateCount(){
   const shown = showProjects ? projects.filter(p=>{
