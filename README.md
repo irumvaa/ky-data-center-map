@@ -8,7 +8,7 @@
 Interactive map of proposed Kentucky data center projects, local moratoria/ordinances/pending
 legislation, and major transmission lines and gas pipelines. Built in the same branded style as
 the Mountain Association's eky-ev-map: county border shading, a search bar with autocomplete, a
-stats bar, and pill-style filters.
+stats bar, and pill-style filters. On wide screens the explanation and filters sit in a left panel, the legend in a right panel, and the map in the middle (on phones everything stacks).
 
 ## Live data, with a static fallback
 This map is backed by a Google Sheet through a Google Apps Script Web App (see "Live data via
@@ -54,6 +54,12 @@ families (indigo, magenta, green) rather than shades of one hue, since early ver
 different lightnesses of purple were too easy to confuse from a distance.
 
 ## Project marker logic
+- Dots and pins (replaces clustering): every project is always drawn. Zoomed out they are small
+  dots; from zoom 9 a project turns into a small teardrop pin once no neighboring marker is
+  close enough to overlap it, and pins grow slightly up to zoom 14. Crowded areas (Louisville,
+  Northern Kentucky) switch later than sparse ones. `renderProjects()` redraws on `zoomend`
+  (skipped below zoom 9, where nothing changes). Popups are built only when opened.
+- Projects with identical coordinates are nudged around a small ring so none hides another.
 - Known city: pinned there (solid pin).
 - Only a county known: placed at that county's real geographic centroid (computed from the
   county polygon, not a stand-in city), shown with a dashed outline, labeled "county-wide,
@@ -64,7 +70,7 @@ different lightnesses of purple were too easy to confuse from a distance.
 
 ## Search
 The search bar indexes every field on every record, including developer, tenant, regulation type,
-notes, tariff text, and now the datacentermap.com directory layer too, not just the name shown
+notes, tariff text, and the commercial facilities (now part of projects), not just the name shown
 on the pin. Typing "TeraWulf" or "moratorium" surfaces the matching projects/regulations/
 facilities directly, with a "matched: <field>" hint when the match wasn't on the obvious name
 field. Multi-word queries require every word to appear somewhere in the record (not necessarily
@@ -86,8 +92,8 @@ Also handles:
 - **Plurals**: mostly falls out of the typo tolerance above ("moratoriums" is edit-distance 1
   from "moratorium").
 - **County search checks all three datasets**: previously a plain county-name search only
-  looked at regulation records for that county. Now it checks regulations, projects, and the
-  directory layer, so e.g. Jessamine County (which has no tracked regulation or project) still
+  looked at regulation records for that county. Now it checks regulations and projects (which
+  include the commercial facilities), so e.g. Jessamine County (which has no tracked regulation or project) still
   surfaces when searched, because KUSI Data Center is there.
 - **"County" suffix, everywhere**: "Boyd County" matches the same as "Boyd" alone, and this
   holds even in combined searches like "Ordinance Fayette County" or "moratorium Boyd County",
@@ -156,7 +162,7 @@ Platforms Paducah, DartPoints Lexington/LexMark, TeraWulf Muskie/Ashland) were e
   showing stale data as if it were current. Only shows "...unavailable" when there's truly
   nothing to fall back on, e.g. the very first time anyone loads the map after the source goes
   down. This fetch-with-cache-fallback pattern is deliberately not used for the
-  datacentermap.com directory layer below, since that source isn't a public API meant for
+  datacentermap.com facility list (see the commercial facilities section), since that source isn't a public API meant for
   repeated automated access the way these two are (see that section for why).
 
 ## Known limitations
