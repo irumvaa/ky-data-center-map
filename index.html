@@ -180,7 +180,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
     <div class="leg-item"><span class="leg-pin" id="leg-pin-proposed"></span>Proposed (<span id="cnt-leg-proposed"></span>)</div>
     <div class="leg-item"><span class="leg-pin" id="leg-pin-operating"></span>Operating (<span id="cnt-leg-operating"></span>)</div>
     <div class="leg-item"><span class="leg-pin" id="leg-pin-approx"></span>Dashed pin or ring: only county known (<span id="cnt-leg-countywide"></span>)</div>
-    <div class="leg-item" style="color:#888">Zoomed out: dots. Zoomed in: pins.</div>
+    <div class="leg-item" style="color:#888">Dots when zoomed out or crowded, pins when there is room.</div>
   </div>
   <div class="leg-group">
     <div class="leg-title">Infrastructure</div>
@@ -713,12 +713,19 @@ function renderRegulations(){
   regClusterGroup = L.layerGroup(markers).addTo(map);
 }
 
-// Zoomed out, projects show as small colored dots so every one stays visible
-// without grouping. From PIN_ZOOM and closer they become full teardrop pins.
-const PIN_ZOOM = 14;
+// Projects are small stage-colored dots when zoomed out. From MIN_PIN_ZOOM on,
+// any project that has room around it (nothing else within a pin's footprint)
+// turns into a small pin that grows with each zoom step up to full size at
+// FULL_PIN_ZOOM. Projects that are still on top of each other stay dots until
+// zooming in gives them room, so crowded counties switch later than sparse ones.
+const MIN_PIN_ZOOM = 9, FULL_PIN_ZOOM = 14;
 function stageColor(p){
   const t=normKey(p.stage);
   return t==='operating' ? '#D1239D' : t==='rumored' ? '#16A34A' : '#4338CA';
+}
+function pinWidthAt(z){
+  const f = (Math.min(z,FULL_PIN_ZOOM)-MIN_PIN_ZOOM) / (FULL_PIN_ZOOM-MIN_PIN_ZOOM);
+  return Math.round(16 + 12*Math.max(0,f));   // 16px at zoom 9 up to 28px
 }
 function projectDotIcon(p, dx, dy){
   const ring = p.countyWide ? ';outline:1.5px dashed #2b2b2b;outline-offset:1px' : '';
@@ -726,32 +733,36 @@ function projectDotIcon(p, dx, dy){
     html:`<div style="width:12px;height:12px;border-radius:50%;background:${stageColor(p)};border:2px solid #fff;box-shadow:0 0 3px rgba(0,0,0,.65)${ring}"></div>`,
     iconSize:[12,12], iconAnchor:[6-dx,6-dy], popupAnchor:[dx,-9+dy]});
 }
-function projectPinIcon(p, dx, dy){
-  return L.divIcon({className:'', html:projectIconSvg(stageColor(p), p.countyWide),
-    iconSize:[28,35], iconAnchor:[14-dx,35-dy], popupAnchor:[dx,-37+dy]});
+function projectPinIcon(p, dx, dy, w){
+  const h = Math.round(w*1.25);
+  const svg = projectIconSvg(stageColor(p), p.countyWide).replace('width="28" height="35"', `width="${w}" height="${h}"`);
+  return L.divIcon({className:'', html:svg, iconSize:[w,h], iconAnchor:[w/2-dx,h-dy], popupAnchor:[dx,-h-2+dy]});
 }
 function renderProjects(){
   if(projClusterGroup) map.removeLayer(projClusterGroup);
   projClusterGroup = L.layerGroup();
   if(showProjects){
-    const asPins = map.getZoom() >= PIN_ZOOM;
+    const z = map.getZoom(), w = pinWidthAt(z), h = Math.round(w*1.25);
     const visible = projects.filter(p=>{
       if(selectedCounty && normKey(p.county)!==normKey(selectedCounty)) return false;
       if(stageFilters.size>0 && !stageFilters.has(p.stage)) return false;
       return true;
     });
-    // Projects with identical coordinates would sit exactly on top of each
-    // other, so each one is nudged a few pixels around a small ring.
-    const groups={};
-    visible.forEach(p=>{ const k=p.lat.toFixed(5)+','+p.lng.toFixed(5); (groups[k]=groups[k]||[]).push(p); });
-    Object.values(groups).forEach(list=>{
-      list.forEach((p,i)=>{
+    // Projects with identical coordinates form one group and are nudged
+    // around a small ring so none is hidden behind another.
+    const byKey={};
+    visible.forEach(p=>{ const k=p.lat.toFixed(5)+','+p.lng.toFixed(5); (byKey[k]=byKey[k]||[]).push(p); });
+    const groups = Object.values(byKey).map(list=>({list, pt:map.project([list[0].lat,list[0].lng], z), extra:list.length>1?Math.round(w*0.6):0}));
+    groups.forEach(g=>{
+      g.asPin = z>=MIN_PIN_ZOOM && !groups.some(o=>o!==g &&
+        Math.abs(o.pt.x-g.pt.x) < w+g.extra+o.extra && Math.abs(o.pt.y-g.pt.y) < h+g.extra+o.extra);
+      g.list.forEach((p,i)=>{
         let dx=0, dy=0;
-        if(list.length>1){
-          const r = asPins ? 12 : 7, ang = (2*Math.PI*i/list.length) - Math.PI/2;
+        if(g.list.length>1){
+          const r = g.asPin ? Math.round(w*0.6) : 7, ang = (2*Math.PI*i/g.list.length) - Math.PI/2;
           dx = Math.round(r*Math.cos(ang)); dy = Math.round(r*Math.sin(ang));
         }
-        const m = L.marker([p.lat,p.lng], {icon: asPins ? projectPinIcon(p,dx,dy) : projectDotIcon(p,dx,dy)})
+        const m = L.marker([p.lat,p.lng], {icon: g.asPin ? projectPinIcon(p,dx,dy,w) : projectDotIcon(p,dx,dy)})
           .bindPopup(projectPopup(p),{maxWidth:330});
         projClusterGroup.addLayer(m);
       });
@@ -760,13 +771,8 @@ function renderProjects(){
   map.addLayer(projClusterGroup);
   updateCount();
 }
-// Swap dots and pins when the zoom crosses PIN_ZOOM (not on every zoom step).
-let lastAsPins = map.getZoom() >= PIN_ZOOM;
-map.on('zoomend', ()=>{
-  const asPins = map.getZoom() >= PIN_ZOOM;
-  if(asPins !== lastAsPins) renderProjects();
-  lastAsPins = asPins;
-});
+// Recompute which projects are dots and which are pins at every zoom change.
+map.on('zoomend', renderProjects);
 
 function updateCount(){
   const shown = showProjects ? projects.filter(p=>{
@@ -1107,7 +1113,7 @@ function selectProject(idx){
   document.getElementById('no-reg-notice-wrap').innerHTML='';
   if(countyHighlightLayer){ map.removeLayer(countyHighlightLayer); countyHighlightLayer=null; }
   renderProjects();
-  map.setView([p.lat,p.lng], p.countyWide?9:PIN_ZOOM);
+  map.setView([p.lat,p.lng], p.countyWide?9:16);
   L.popup({maxWidth:330}).setLatLng([p.lat,p.lng]).setContent(projectPopup(p)).openOn(map);
 }
 function selectRegulation(idx){
