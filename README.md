@@ -117,6 +117,12 @@ Also handles:
   matched, so a broad search like "moratorium" (which matches roughly 18 counties) was only
   ever showing the first 4; raised the cap and added scroll to the dropdown to support it.
 
+## Shareable views and county summary
+`viewToHash()` / `applyHash()` keep the filters (reg, stage, proj, tx, gas), selected county and map
+view in the URL hash (updated with `history.replaceState`, so no history clutter); the "Copy link to
+this view" button copies it. Unknown or malformed values are ignored. County popups append
+`countyProjectsHtml()`, a list of that county's projects that links to each one.
+
 ## Popup fields
 Regulations: Location, Type, Duration + Expiration (moratoria only), Source. (No individual
 contact names are stored or shown; that data was removed entirely from data, popups, and search.)
