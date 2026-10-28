@@ -20,6 +20,10 @@ stats bar, and pill-style filters.
   counties keep their color, the rest fade, and the city markers follow. "All" shows everything;
   clicking All while it is already active turns every regulation off. Button counts read
   "N (X county, Y city)" and are computed from the data, so they update after each live refresh.
+- Expiring soon: a fourth Regulation option (`regFilters` key `expiring`) matches moratoria whose
+  expiration date is 0 to 60 days away (`isExpiringSoon()`, `EXPIRING_DAYS`), and their popups show
+  an "Expires in N days" tag. It is computed from today's date at load, so it needs no extra data.
+  Moratoria already past their date are dropped by `dropExpiredMoratoria()`.
 - Summary numbers (left panel): "counties with a regulation" counts distinct counties (a county
   with both a county and a city rule counts once), so it can be lower than the Regulation "All"
   count, which counts rules.
