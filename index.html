@@ -210,7 +210,7 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
 <div class="infobar">
 <div class="search-bar">
   <div class="search-wrap">
-    <input type="text" id="county-search" placeholder="Search the map…" aria-label="Search for a county, city or project" autocomplete="off" oninput="onSearchInput()" onkeydown="onSearchKey(event)"/>
+    <input type="text" id="county-search" placeholder="Search a county, city, company, or &quot;expiring&quot;…" aria-label="Search for a county, city or project" autocomplete="off" oninput="onSearchInput()" onkeydown="onSearchKey(event)"/>
     <button class="search-clear" id="search-clear" onclick="clearSearch()" title="Clear">✕</button>
     <div class="suggestions" id="suggestions"></div>
   </div>
@@ -490,8 +490,32 @@ function editDistance(a, b){
 // Exact substring match first (fast path, no false positives). Only if that
 // fails, and the term is long enough to make typos meaningful, fall back to
 // fuzzy word-level matching against the blob's own words.
+// Everyday words people type that the data words differently. Each key maps
+// to alternates that count as a match too ("ban" finds moratoriums).
+const SEARCH_SYNONYMS = {
+  moratoria:['moratorium'], ban:['moratorium'], banned:['moratorium'], pause:['moratorium'], paused:['moratorium'],
+  freeze:['moratorium'], halt:['moratorium'], zoning:['ordinance'], rule:['ordinance'], rules:['ordinance'], law:['ordinance'], laws:['ordinance'],
+  bitcoin:['mining','crypto'], crypto:['mining','bitcoin'], cryptocurrency:['mining','crypto'], miner:['mining'],
+  colo:['colocation'], colocation:['colo','hosting'], hosting:['colocation'],
+  datacenter:['data center'], datacenters:['data center'], dc:['data center'], centre:['center'], centres:['center'],
+  existing:['operating'], built:['operating'], active:['operating'], running:['operating'], live:['operating'],
+  planned:['proposed'], planning:['proposed'], proposal:['proposed'], proposals:['proposed'],
+  rumor:['rumored'], rumour:['rumored'], rumours:['rumored'], rumors:['rumored'],
+  utility:['power','electric'], electricity:['power','electric'], power:['electric','utility'],
+  gigawatt:['gw'], megawatt:['mw']
+};
+// The term itself, its synonyms, and a simple singular form (counties -> county).
+function termVariants(term){
+  const v=[term];
+  if(SEARCH_SYNONYMS[term]) v.push(...SEARCH_SYNONYMS[term]);
+  if(term.length>4){
+    if(term.endsWith('ies')) v.push(term.slice(0,-3)+'y');
+    else if(term.endsWith('s')) v.push(term.slice(0,-1));
+  }
+  return v;
+}
 function fuzzyIncludes(blob, term){
-  if(blob.includes(term)) return true;
+  if(termVariants(term).some(v=>blob.includes(v))) return true;
   if(term.length < 5) return false; // short words (4 chars) collide too easily — "pipe" vs "pike"
   const maxDist = term.length >= 7 ? 2 : 1;
   const words = blob.split(/[^a-z0-9]+/).filter(w=>w.length>=5);
@@ -1131,13 +1155,58 @@ function fieldMatchLabel(fields, terms){
   return '';
 }
 
+// Relevance: for each search word, take the best field it hits (name beats
+// city beats notes; start of a word beats the middle of one), then add them
+// up. Sorting by this puts the most likely result first instead of data order.
+function relevance(fields, q, terms){
+  let total=0;
+  terms.forEach(t=>{
+    let best=0;
+    const vs=termVariants(t);
+    fields.forEach(([text,w])=>{
+      const x=String(text||'').toLowerCase();
+      if(!x) return;
+      let f=0;
+      vs.forEach(v=>{
+        if(x===v) f=Math.max(f,4);
+        else if(x.startsWith(v)) f=Math.max(f,3);
+        else if(new RegExp('(^|[^a-z0-9])'+v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).test(x)) f=Math.max(f,2.5);
+        else if(x.includes(v)) f=Math.max(f,2);
+      });
+      best=Math.max(best,w*f);
+    });
+    total+=best;
+  });
+  const first=String(fields[0][0]||'').toLowerCase();
+  if(q && first.startsWith(q)) total+=40; // typed the start of the name
+  return total;
+}
+// Nothing matched: look for the closest county, city or project name so a
+// typo like "Fayete" or "Bowlin Green" still gets a one-click fix.
+function didYouMean(q){
+  const cands=[];
+  allCounties.forEach(c=>cands.push({type:'county',value:c,label:c+' County',words:[c.toLowerCase()]}));
+  Object.keys(cityCoords).forEach(k=>cands.push({type:'city',value:k,label:k.replace(/\b\w/g,c=>c.toUpperCase()),words:[k]}));
+  projects.forEach((p,i)=>{ if(p.name) cands.push({type:'project',value:i,label:p.name,words:[p.name.toLowerCase()].concat(p.name.toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>=4))}); });
+  const limit=q.length>=8?2:1;
+  let best=null,bd=99;
+  cands.forEach(c=>c.words.forEach(w=>{
+    const d=Math.min(editDistance(q,w), editDistance(q,w.slice(0,q.length)));
+    if(d<bd){bd=d;best=c;}
+  }));
+  return (best && bd<=limit && q.length>=4) ? best : null;
+}
+
 function onSearchInput(){
   const raw=document.getElementById('county-search').value.trim();
   const q=raw.toLowerCase();
   document.getElementById('search-clear').classList.toggle('visible', q.length>0);
   if(!q){ closeSuggestions(); return; }
   if(q.length < 2){ closeSuggestions(); return; } // a single character matches almost everything — wait for a real query
-  const terms = searchTerms(q);
+  let terms = searchTerms(q);
+  // "expiring", "ending soon": jump straight to moratoria that end within 60 days.
+  const wantsExpiring = /\b(expir\w*|ending soon|ends soon|about to end|running out)\b/.test(q);
+  if(wantsExpiring) terms = terms.filter(t=>!/^expir/.test(t) && !['ending','ends','soon','about','to','end','running','out'].includes(t));
   // For the county name-prefix check specifically, strip a trailing "county"
   // (with or without a space before it) so "Boyd County" prefix-matches
   // "Boyd" the same way "Boyd" alone does.
@@ -1155,6 +1224,24 @@ function onSearchInput(){
   const regMatches = regulations.map((r,i)=>({r,i}))
     .filter(o=>terms.length && blobMatchesAll(o.r._blob, terms))
     .filter(o=>!(o.r.county.toLowerCase().startsWith(qForCountyPrefix) && terms.length===1)); // don't duplicate a plain county-name search
+
+  if(wantsExpiring){
+    countyMatches.length=0; projMatches.length=0; regMatches.length=0;
+    regulations.map((r,i)=>({r,i}))
+      .filter(o=>isExpiringSoon(o.r) && (!terms.length || blobMatchesAll(o.r._blob, terms)))
+      .sort((a,b)=>daysUntilExpiry(a.r)-daysUntilExpiry(b.r))
+      .forEach(o=>regMatches.push(o));
+  } else {
+    // Most relevant first.
+    projMatches.forEach(o=>{ const p=o.p; o.score=relevance([[p.name,10],[p.city,6],[p.county,5],[p.developer,5],[p.tenant,4],[p.stage,3],[p.notes,1]],q,terms); });
+    projMatches.sort((a,b)=>b.score-a.score);
+    regMatches.forEach(o=>{ const r=o.r; o.score=relevance([[r.city||r.county,10],[r.county,6],[r.type,5],[r.notes,1]],q,terms); });
+    regMatches.sort((a,b)=>b.score-a.score);
+    // Counties whose name starts with the query come before counties matched by content.
+    const pre=[],rest=[];
+    countyMatches.forEach(c=> (c.toLowerCase().startsWith(qForCountyPrefix) ? pre : rest).push(c));
+    countyMatches.length=0; countyMatches.push(...pre,...rest.slice(0,4)); // topic words match many counties by content; keep a few so projects and rules stay visible
+  }
 
   // "county-wide" / "city-level" are structured concepts (a regulation's
   // `level` field, or a project's `countyWide` flag), not just words that
@@ -1187,7 +1274,18 @@ function onSearchInput(){
   const cityMatches = Object.keys(cityToCounty).filter(key=>key.startsWith(q)).slice(0,3);
 
   const sugEl=document.getElementById('suggestions');
-  if(!countyMatches.length && !projMatches.length && !regMatches.length && !cityMatches.length){ sugEl.classList.remove('open'); return; }
+  if(!countyMatches.length && !projMatches.length && !regMatches.length && !cityMatches.length){
+    const dm = wantsExpiring ? null : didYouMean(qForCountyPrefix);
+    const msg = wantsExpiring ? 'No moratoria are expiring within '+EXPIRING_DAYS+' days.' : 'No matches for \u201c'+raw.replace(/</g,'&lt;')+'\u201d.';
+    let h = '<div class="sug-empty" style="padding:10px 14px;font-size:13px;color:#555;">'+msg+'</div>';
+    if(dm) h += '<div class="suggestion-item" data-type="'+dm.type+'" data-value="'+String(dm.value).replace(/"/g,'&quot;')+'"><span class="sug-type-tag sug-tag-county">Did you mean</span>'+dm.label+'</div>';
+    sugEl.innerHTML=h; suggestIdx=-1;
+    sugEl.querySelectorAll('.suggestion-item').forEach(el=>el.addEventListener('click',()=>{
+      const t=el.dataset.type, v=el.dataset.value;
+      if(t==='county') selectCounty(v); else if(t==='project') selectProject(parseInt(v)); else if(t==='city') selectCity(v);
+    }));
+    sugEl.classList.add('open'); return;
+  }
   suggestIdx=-1;
   let html='';
   cityMatches.forEach(key=>{
@@ -1201,10 +1299,10 @@ function onSearchInput(){
     const has = regCountiesSet.has(normKey(c));
     html += `<div class="suggestion-item" data-type="county" data-value="${c}"><span class="sug-type-tag sug-tag-county">County</span>${c} County${!has?'<span class="no-reg">no regulation</span>':''}</div>`;
   });
-  regMatches.slice(0,4).forEach(o=>{
+  regMatches.slice(0,wantsExpiring?8:4).forEach(o=>{
     const r=o.r;
     const label = fieldMatchLabel([['notes',r.notes],['type',r.type],['period',r.period]], terms);
-    const sub = `${r.type}${r.city? ' ('+r.city+')' : ''}, ${r.county} County${label?' · matched: '+label:''}`;
+    const sub = `${r.type}${r.city? ' ('+r.city+')' : ''}, ${r.county} County${wantsExpiring ? ' · '+expiryLabel(daysUntilExpiry(r)) : (label?' · matched: '+label:'')}`;
     html += `<div class="suggestion-item" data-type="regulation" data-value="${o.i}"><span class="sug-type-tag" style="background:#f6ecc9;color:#4a3700;">Regulation</span>${r.city||r.county+' County'}<span class="sug-sub">${sub}</span></div>`;
   });
   projMatches.slice(0,5).forEach(o=>{
@@ -1230,8 +1328,9 @@ function onSearchKey(e){
   if(!items.length) return;
   if(e.key==='ArrowDown'){ e.preventDefault(); suggestIdx=Math.min(suggestIdx+1, items.length-1); items.forEach((el,i)=>el.classList.toggle('selected', i===suggestIdx)); }
   else if(e.key==='ArrowUp'){ e.preventDefault(); suggestIdx=Math.max(suggestIdx-1, 0); items.forEach((el,i)=>el.classList.toggle('selected', i===suggestIdx)); }
-  else if(e.key==='Enter' && suggestIdx>=0){
-    const el=items[suggestIdx];
+  else if(e.key==='Enter' && sugEl.classList.contains('open')){
+    e.preventDefault();
+    const el=items[suggestIdx>=0?suggestIdx:0]; // Enter with nothing highlighted takes the top result
     const t=el.dataset.type, v=el.dataset.value;
     if(t==='county') selectCounty(v);
     else if(t==='regulation') selectRegulation(parseInt(v));

@@ -121,6 +121,15 @@ facilities directly, with a "matched: <field>" hint when the match wasn't on the
 field. Multi-word queries require every word to appear somewhere in the record (not necessarily
 together). Selecting any result zooms straight to it and opens its popup.
 
+Smarter matching: results are ranked by relevance (a name match beats a notes match, and the
+start of a word beats the middle). Everyday words work as synonyms ("ban" or "pause" finds
+moratoria, "zoning" finds ordinances, "bitcoin" finds mining, "colo" finds colocation, "planned"
+finds proposed), and plurals are understood ("counties"). Typing "expiring" or "ending soon" lists
+the moratoria ending within 60 days, soonest first, and can be combined with a county ("expiring
+Fayette"). Enter with nothing highlighted opens the top result. If nothing matches, the box says so
+and offers a "Did you mean" link for the nearest county, city or project name. The synonym list is
+`SEARCH_SYNONYMS` in index.html.
+
 **City search**: every city mentioned anywhere across regulations, projects, or the directory
 layer (27 cities total) is independently searchable, resolves to its actual county, and zooms
 directly to that city's real coordinates rather than the county centroid. This works even for
