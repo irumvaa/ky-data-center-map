@@ -8,7 +8,7 @@
 Interactive map of proposed Kentucky data center projects, local moratoria/ordinances/pending
 legislation, and major transmission lines and gas pipelines. Built in the same branded style as
 the Mountain Association's eky-ev-map: county border shading, a search bar with autocomplete, a
-stats bar, and pill-style filters. On wide screens the explanation and filters sit in a left panel, the legend in a right panel, and the map in the middle (on phones everything stacks).
+stats bar, and pill-style filters. On wide screens the filters sit in a strip above the map next to the search box, the summary numbers and explanation in a left panel, the legend in a right panel, and the map in the middle (on phones everything stacks).
 
 ## Live data, with a static fallback
 This map is backed by a Google Sheet through a Google Apps Script Web App (see "Live data via
