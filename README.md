@@ -11,8 +11,9 @@ the Mountain Association's eky-ev-map: county border shading, a search bar with 
 stats bar, and pill-style filters.
 
 ## Page layout and filters
-- Wide screens (1000 px and up): logo and title share one row; below it a strip holds the search
-  box and the filters (Regulation, Projects, Layers, "Copy link to this view"); under that, a left
+- Wide screens (1000 px and up): logo and title share one row; below it a strip with the search
+  box on its own row (plus "Copy link to this view" at the right), then the filters (Regulation and
+  Layers on one row, Projects below); under that, a left
   panel (summary numbers plus the explanation), the map, and a right panel (the legend). Phones
   get one column: search, filters, summary numbers, explanation, map, legend. The map is fitted to
   Kentucky on load (`fitKentucky()`, zoom in quarter steps).

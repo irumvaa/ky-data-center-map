@@ -135,17 +135,18 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
   .ma-logo{height:40px}
   .topbar header{flex:1;padding:8px 20px}
   .topbar header p{display:none}
-  .infobar{display:flex;align-items:center;background:#fff;border-bottom:1px solid #e2e0db}
-  .infobar .search-bar{flex:0 0 290px;border-bottom:none;padding:6px 8px}
-  .infobar .search-wrap{max-width:none}
-  .infobar .controls{flex:1;min-width:0;border-bottom:none;padding:6px 10px 6px 0;gap:4px;row-gap:4px}
+  .infobar{display:flex;flex-direction:column;align-items:stretch;background:#fff;border-bottom:1px solid #e2e0db}
+  .infobar .search-bar{flex:0 0 auto;border-bottom:none;padding:8px 18px 2px}
+  .infobar .search-wrap{max-width:560px;width:100%}
+  .infobar .search-bar .share-pill{margin-left:auto;padding:4px 12px;font-size:12px}
+  .infobar .controls{flex:0 0 auto;min-width:0;border-bottom:none;padding:4px 18px 8px;gap:4px;row-gap:4px}
   .infobar .controls .pill{padding:2px 6px;font-size:11px;gap:3px}
   .infobar .controls .ctrl-label{font-size:11px;font-weight:700;color:#333}
   .infobar .controls .divider{display:none}
   .infobar .controls .ctrl-group{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-right:6px}
   .infobar .controls .badge-count{padding:3px 10px;font-size:11.5px}
   body{display:flex;flex-direction:column;height:100vh;overflow-y:auto}
-  .layout{flex:1 1 auto;height:auto;min-height:600px}
+  .layout{flex:1 1 auto;height:auto;min-height:480px}
 }
 
 .site-footer{background:#fff;border-top:1px solid #e2e0db;padding:7px 18px;font-size:12px;color:#555;text-align:center}
@@ -206,6 +207,7 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
   </div>
   <div id="county-tag-wrap"></div>
   <div id="no-reg-notice-wrap"></div>
+  <button class="pill share-pill" id="btn-share" onclick="copyViewLink()">Copy link to this view</button>
 </div>
 <div class="controls">
   <div class="ctrl-group">
@@ -217,17 +219,16 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
   <button class="pill" id="btn-reg-ordinance" onclick="setRegFilter('ordinance')"><span class="dot" style="background:#2DD4BF"></span>Ordinance (<span id="cnt-reg-ordinance"></span>)</button>
   </div>
   <div class="ctrl-group">
+  <span class="ctrl-label">Layers:</span>
+  <button class="pill" id="btn-transmission" onclick="toggleTransmission()">Transmission lines</button>
+  <button class="pill" id="btn-gaspipe" onclick="toggleGasPipelines()">Gas pipelines</button>
+  </div>
+  <div class="ctrl-group">
   <span class="ctrl-label">Projects:</span>
   <button class="pill active" id="btn-proj-show" onclick="toggleProjects()">Show projects (<span id="cnt-proj-all"></span>)</button>
   <button class="pill" id="btn-stage-rumored" onclick="toggleStage('Rumored')"><span class="pill-pin" id="pin-rumored"></span>Rumored (<span id="cnt-stage-rumored"></span>)</button>
   <button class="pill" id="btn-stage-proposed" onclick="toggleStage('Proposed')"><span class="pill-pin" id="pin-proposed"></span>Proposed (<span id="cnt-stage-proposed"></span>)</button>
   <button class="pill" id="btn-stage-operating" onclick="toggleStage('Operating')"><span class="pill-pin" id="pin-operating"></span>Operating (<span id="cnt-stage-operating"></span>)</button>
-  </div>
-  <div class="ctrl-group">
-  <span class="ctrl-label">Layers:</span>
-  <button class="pill" id="btn-transmission" onclick="toggleTransmission()">Show transmission lines</button>
-  <button class="pill" id="btn-gaspipe" onclick="toggleGasPipelines()">Show gas pipelines</button>
-  <button class="pill" id="btn-share" onclick="copyViewLink()">Copy link to this view</button>
   </div>
 </div>
 </div>
@@ -1072,7 +1073,7 @@ function toggleTransmission(){
       showTransmission=false;
     });
   } else {
-    b.textContent='Show transmission lines';
+    b.textContent='Transmission lines';
     if(transmissionLayer) map.removeLayer(transmissionLayer);
   }
 }
@@ -1100,7 +1101,7 @@ function toggleGasPipelines(){
       showGasPipelines=false;
     });
   } else {
-    b.textContent='Show gas pipelines';
+    b.textContent='Gas pipelines';
     if(gasPipelineLayer) map.removeLayer(gasPipelineLayer);
   }
 }
