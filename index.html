@@ -134,13 +134,13 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   .topbar header{flex:1;padding:8px 20px}
   .topbar header p{display:none}
   .infobar{display:flex;align-items:center;background:#fff;border-bottom:1px solid #e2e0db}
-  .infobar .search-bar{flex:0 0 230px;border-bottom:none;padding:6px 12px}
+  .infobar .search-bar{flex:0 0 200px;border-bottom:none;padding:6px 10px}
   .infobar .search-wrap{max-width:none}
-  .infobar .controls{flex:1;min-width:0;border-bottom:none;padding:6px 14px 6px 0;gap:5px;row-gap:5px}
-  .infobar .controls .pill{padding:3px 10px;font-size:11.5px}
+  .infobar .controls{flex:1;min-width:0;border-bottom:none;padding:6px 10px 6px 0;gap:4px;row-gap:4px}
+  .infobar .controls .pill{padding:2px 7px;font-size:11px;gap:4px}
   .infobar .controls .ctrl-label{font-size:11px;font-weight:700;color:#333}
   .infobar .controls .divider{display:none}
-  .infobar .controls .ctrl-group{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-right:10px}
+  .infobar .controls .ctrl-group{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-right:6px}
   .infobar .controls .badge-count{padding:3px 10px;font-size:11.5px}
   body{display:flex;flex-direction:column;height:100vh;overflow-y:auto}
   .layout{flex:1 1 auto;height:auto;min-height:600px}
@@ -176,7 +176,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 </div>
 <div class="controls">
   <div class="ctrl-group">
-  <span class="ctrl-label">Regulation (pick any):</span>
+  <span class="ctrl-label" title="Click one or more types">Regulation:</span>
   <button class="pill active" id="btn-reg-all" onclick="setRegFilter('all')">All (<span id="cnt-reg-all"></span>)</button>
   <button class="pill" id="btn-reg-pending" onclick="setRegFilter('pending')"><span class="dot" style="background:#DC2626"></span>Pending/Proposed (<span id="cnt-reg-pending"></span>)</button>
   <button class="pill" id="btn-reg-moratorium" onclick="setRegFilter('moratorium')"><span class="dot" style="background:#0072B2"></span>Moratorium (<span id="cnt-reg-moratorium"></span>)</button>
