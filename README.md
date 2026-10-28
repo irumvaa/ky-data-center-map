@@ -34,6 +34,24 @@ stats bar, and pill-style filters.
   facilities); the stage buttons filter by stage. Search, county popups (which list the county's
   projects) and shareable links are described in their own sections below.
 
+## Design, sharing and accessibility
+- Colors: the page chrome uses the Mountain Association logo colors, black (#161616) and gold
+  (#D4A017), with dark gold (#6b4f00) for links and text accents so they pass contrast. The data
+  colors (moratorium blue, ordinance teal, pending red, stage pin colors) are unchanged. The
+  OpenStreetMap tiles are muted with a CSS filter (`.leaflet-tile-pane`) so the data stands out.
+- Link previews: `og-image.png` (1200x630, generated from the page's own data), `favicon.svg`, and
+  Open Graph / Twitter tags in both pages. Chat apps cache previews, so after changing the image
+  they may keep showing the old one for a while.
+- Data status line (footer): says "Showing the saved snapshot" until the live Google Sheet data
+  loads, then "Live data loaded <date>". If the Apps Script response ever includes an `updated`
+  field, the footer shows "Data last updated <that value>" instead (to be added to `buildMapData`
+  in `Code.gs` during the sheet rebuild).
+- Popups have a top edge in the stage or regulation color; counties highlight on hover.
+- Accessibility: all text meets WCAG AA contrast (checked with a script over the rendered page),
+  visible keyboard focus rings, a "Skip to the map" link, `aria-pressed` on filter buttons, labels
+  on markers, a polite live region for the "N shown" count, and reduced-motion support. County
+  outlines are not Tab stops (120 of them); keyboard users reach any county through the search box.
+
 ## Live data, with a static fallback
 This map is backed by a Google Sheet through a Google Apps Script Web App (see "Live data via
 Apps Script" below), so non-technical people can add or correct information through a form
