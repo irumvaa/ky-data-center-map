@@ -91,6 +91,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .b-proposed{background:#e1ddf9;color:#2d2287}
 .b-operating{background:#f9d9ef;color:#8e0a6c}
 .b-rumored{background:#d7f0dd;color:#146c34}
+.b-expiring{background:#fff1c9;color:#7a4a00;border:1px solid #e8b84a}
 .b-countywide{background:#fdebd0;color:#784212}
 .pop-table{width:100%;font-size:12px;border-collapse:collapse}
 .pop-table td{padding:3px 0;vertical-align:top}
@@ -179,6 +180,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <button class="pill active" id="btn-reg-all" onclick="setRegFilter('all')">All (<span id="cnt-reg-all"></span>)</button>
   <button class="pill" id="btn-reg-pending" onclick="setRegFilter('pending')"><span class="dot" style="background:#DC2626"></span>Pending/Proposed (<span id="cnt-reg-pending"></span>)</button>
   <button class="pill" id="btn-reg-moratorium" onclick="setRegFilter('moratorium')"><span class="dot" style="background:#0072B2"></span>Moratorium (<span id="cnt-reg-moratorium"></span>)</button>
+  <button class="pill" id="btn-reg-expiring" onclick="setRegFilter('expiring')" title="Moratoria that end within 60 days"><span class="dot" style="background:#E69F00"></span>Expiring soon (<span id="cnt-reg-expiring"></span>)</button>
   <button class="pill" id="btn-reg-ordinance" onclick="setRegFilter('ordinance')"><span class="dot" style="background:#2DD4BF"></span>Ordinance (<span id="cnt-reg-ordinance"></span>)</button>
   </div>
   <div class="ctrl-group">
@@ -343,6 +345,17 @@ function parseExpirationDate(str){
   const [, mo, day, yr] = m;
   return new Date(2000 + parseInt(yr,10), parseInt(mo,10) - 1, parseInt(day,10));
 }
+// Whole days from today until a moratorium's expiration date (null if none).
+const EXPIRING_DAYS = 60;
+function daysUntilExpiry(r){
+  if(normKey(r.type)!=='moratorium') return null;
+  const exp = parseExpirationDate(r.expiration);
+  if(!exp) return null;
+  const t=new Date(); const today=new Date(t.getFullYear(),t.getMonth(),t.getDate());
+  return Math.round((exp-today)/86400000);
+}
+function isExpiringSoon(r){ const d=daysUntilExpiry(r); return d!==null && d>=0 && d<=EXPIRING_DAYS; }
+function expiryLabel(d){ return d===0?'Expires today':(d===1?'Expires tomorrow':'Expires in '+d+' days'); }
 function dropExpiredMoratoria(){
   const today = new Date();
   const before = regulations.length;
@@ -508,7 +521,7 @@ function regTypeKey(type){
   if(t==='pending' || t==='pending or proposed' || t==='pending/proposed') return 'pending';
   return '';
 }
-function regMatchesFilter(r){ if(regOff) return false; return regFilters.size===0 || regFilters.has(regTypeKey(r.type)); }
+function regMatchesFilter(r){ if(regOff) return false; return regFilters.size===0 || regFilters.has(regTypeKey(r.type)) || (regFilters.has('expiring') && isExpiringSoon(r)); }
 // For one county polygon, says whether its county-wide rule and/or any
 // city rule inside it match the active Regulation filter.
 function countyFilterState(f){
@@ -588,7 +601,9 @@ function regulationPopup(r){
   const title = r.city ? r.city : (r.county + " County");
   const location = r.city ? (r.city + ", " + r.county + " County") : (r.county + " County (countywide)");
   const levelBadge = `<span class="badge b-level">${isCounty ? 'County-wide' : 'City ordinance'}</span>`;
-  const badges = `<span class="badge ${regBadgeClass(r.type)}">${r.type}</span>${levelBadge}`;
+  const dLeft = daysUntilExpiry(r);
+  const expBadge = (dLeft!==null && dLeft>=0 && dLeft<=EXPIRING_DAYS) ? `<span class="badge b-expiring">${expiryLabel(dLeft)}</span>` : '';
+  const badges = `<span class="badge ${regBadgeClass(r.type)}">${r.type}</span>${levelBadge}${expBadge}`;
   let html = `<div class="pop"><div class="pop-name">${title}${r.city? " ("+r.county+" County)":""}</div><div class="pop-badges">${badges}</div><table class="pop-table">`;
   html += popupRow("Location", location);
   if(r.startDate) html += popupRow("Start date", r.startDate);
@@ -871,6 +886,7 @@ function updateFilterCounts(){
   document.getElementById('cnt-reg-all').textContent = breakout(regulations);
   document.getElementById('cnt-reg-pending').textContent = breakout(regulations.filter(r=>regTypeKey(r.type)==='pending'));
   document.getElementById('cnt-reg-moratorium').textContent = breakout(regulations.filter(r=>regTypeKey(r.type)==='moratorium'));
+  document.getElementById('cnt-reg-expiring').textContent = breakout(regulations.filter(isExpiringSoon));
   document.getElementById('cnt-reg-ordinance').textContent = breakout(regulations.filter(r=>regTypeKey(r.type)==='ordinance'));
 
   document.getElementById('cnt-proj-all').textContent = projects.length;
@@ -919,7 +935,7 @@ function setRegFilter(val){
     regOff=false;
     if(regFilters.has(val)) regFilters.delete(val); else regFilters.add(val);
   }
-  ['moratorium','ordinance','pending'].forEach(id=>document.getElementById('btn-reg-'+id).classList.toggle('active', regFilters.has(id)));
+  ['moratorium','ordinance','pending','expiring'].forEach(id=>document.getElementById('btn-reg-'+id).classList.toggle('active', regFilters.has(id)));
   document.getElementById('btn-reg-all').classList.toggle('active', regFilters.size===0 && !regOff);
   refreshCountyLayer();
   updateFilterCounts();
@@ -1337,7 +1353,7 @@ function applyHash(){
   const q=new URLSearchParams(location.hash.replace(/^#/,''));
   if(![...q.keys()].length) return;
   if(q.get('reg')==='none'){ if(!regOff) { if(regFilters.size) setRegFilter('all'); setRegFilter('all'); } }
-  else (q.get('reg')||'').split(',').forEach(t=>{ if(['moratorium','ordinance','pending'].includes(t) && !regFilters.has(t)) setRegFilter(t); });
+  else (q.get('reg')||'').split(',').forEach(t=>{ if(['moratorium','ordinance','pending','expiring'].includes(t) && !regFilters.has(t)) setRegFilter(t); });
   (q.get('stage')||'').split(',').forEach(st=>{ if(['Rumored','Proposed','Operating'].includes(st) && !stageFilters.has(st)) toggleStage(st); });
   if(q.get('proj')==='0' && showProjects) toggleProjects();
   if(q.get('tx')==='1' && !showTransmission) toggleTransmission();
