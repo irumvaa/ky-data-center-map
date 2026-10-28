@@ -18,11 +18,11 @@ header{background:#4a4a4a;border-bottom:3px solid #D4A017;color:#fff;padding:16p
 .logo{width:38px;height:38px;border-radius:50%;background:#D4A017;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0}
 header h1{font-size:17px;font-weight:600;line-height:1.2}
 header p{font-size:12px;color:#d9d2bd;margin-top:2px}
-.source-tag{font-size:11px;color:#d9d2bd;background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:20px;white-space:nowrap}
-.about-banner{background:#fbf6e6;border-bottom:1px solid #ecdcb0;padding:12px 24px;font-size:13.5px;line-height:1.55;color:#3a3426;}
+.source-tag{font-size:12px;color:#d9d2bd;background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:20px;white-space:nowrap}
+.about-banner{background:#fbf6e6;border-bottom:1px solid #ecdcb0;padding:12px 24px;font-size:13px;line-height:1.55;color:#3a3426;}
 .about-banner a{color:#6b4f00;font-weight:600;text-decoration:underline;}
 .about-banner a:hover{color:#4a3700;}
-@media(max-width:600px){.about-banner{padding:10px 14px;font-size:12.5px;}}
+@media(max-width:600px){.about-banner{padding:10px 14px;font-size:13px;}}
 .header-actions{display:flex;gap:8px;flex-wrap:wrap}
 .header-btn{font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;text-decoration:none;white-space:nowrap;transition:opacity .15s;background:#D4A017;color:#161616;border:1.5px solid #D4A017}
 .header-btn:hover{opacity:0.85}
@@ -31,7 +31,7 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
 @media(max-width:600px){.header-actions{width:100%;justify-content:stretch}.header-btn{flex:1;text-align:center}}
 .stats-bar{background:#fbf6e6;border-bottom:1px solid #ecdcb0;padding:8px 20px;display:flex;gap:20px;flex-wrap:wrap;align-items:center}
 .stat{font-size:12px;color:#555;display:flex;align-items:center;gap:5px}
-.stat strong{font-size:15px;font-weight:700;color:#6b4f00}
+.stat strong{font-size:20px;font-weight:700;color:#4a3700;line-height:1}
 .stat-divider{width:1px;height:18px;background:#ecdcb0}
 .search-bar{background:#fff;border-bottom:1px solid #e2e0db;padding:8px 18px;display:flex;align-items:center;gap:8px;position:relative}
 .search-wrap{position:relative;flex:1;max-width:320px}
@@ -45,11 +45,11 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
 .suggestion-item{padding:9px 14px;font-size:13px;cursor:pointer;color:#1a1a1a;border-bottom:1px solid #f0efe9;transition:background .1s}
 .suggestion-item:last-child{border-bottom:none}
 .suggestion-item:hover,.suggestion-item.selected{background:#fbf6e6;color:#6b4f00}
-.suggestion-item .no-reg{font-size:11px;color:#c05;margin-left:6px}
-.sug-type-tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;margin-right:8px;text-transform:uppercase;letter-spacing:.3px;vertical-align:middle}
+.suggestion-item .no-reg{font-size:12px;color:#c05;margin-left:6px}
+.sug-type-tag{font-size:12px;font-weight:600;padding:2px 7px;border-radius:8px;margin-right:8px;text-transform:uppercase;letter-spacing:.3px;vertical-align:middle}
 .sug-tag-county{background:#f6ecc9;color:#6b4f00}
 .sug-tag-project{background:#e6f1fb;color:#0C447C}
-.suggestion-item .sug-sub{font-size:11px;color:#666;margin-left:8px}
+.suggestion-item .sug-sub{font-size:12px;color:#666;margin-left:8px}
 .county-tag{display:flex;align-items:center;gap:6px;background:#f6ecc9;border:1.5px solid #D4A017;border-radius:20px;padding:4px 10px;font-size:12px;color:#6b4f00;font-weight:500}
 .county-tag button{background:none;border:none;cursor:pointer;color:#6b4f00;font-size:14px;line-height:1;padding:0 0 0 2px}
 .no-reg-notice{font-size:12px;color:#c05;background:#fff0f0;border:1px solid #fcc;border-radius:8px;padding:5px 12px}
@@ -70,14 +70,14 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
 #map{width:100%;height:calc(100vh - 260px);min-height:360px}
 .legend{background:#fff;border-top:1px solid #e2e0db;border-bottom:1px solid #e2e0db;padding:5px 18px;display:flex;flex-direction:column;gap:3px}
 .leg-group{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:2px 16px}
-.leg-title{flex:0 0 205px;white-space:nowrap;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#333}
+.leg-title{flex:0 0 205px;white-space:nowrap;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#333}
 .leg-pin{display:inline-flex;width:12px;height:15px;flex-shrink:0}
 .leg-pin svg{width:100%;height:100%;display:block}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#555}
 .leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 .leg-box{width:14px;height:11px;border-radius:2px;flex-shrink:0}
 .leg-line{width:16px;height:2px;flex-shrink:0}
-.leg-credit{margin-left:auto;font-size:10.5px;color:#666}
+.leg-credit{margin-left:auto;font-size:12px;color:#666}
 .leaflet-popup-content-wrapper{border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.12)!important;padding:0!important}
 .leaflet-popup-content{margin:0!important;width:auto!important;max-height:340px;overflow-y:auto;}
 .pop{padding:14px 16px;min-width:240px;max-width:310px}
@@ -85,7 +85,7 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
 .leaflet-tooltip{font-size:12px;border-radius:6px;border:1px solid #d8d6cf;box-shadow:0 2px 8px rgba(0,0,0,.12);color:#1a1a1a}
 .pop-name{font-size:15px;font-weight:700;color:#111;margin-bottom:7px;line-height:1.3}
 .pop-badges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px}
-.badge{font-size:11px;font-weight:500;padding:2px 9px;border-radius:10px}
+.badge{font-size:12px;font-weight:500;padding:2px 9px;border-radius:10px}
 .b-mor{background:#d6e9f5;color:#004d73}
 .b-level{background:#eee;color:#555}
 .b-pending{background:#fbdcdc;color:#8a1414}
@@ -99,11 +99,11 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
 .pop-table td{padding:3px 0;vertical-align:top}
 .pop-table td:first-child{color:#666;width:98px}
 .field-unavailable{color:#b08a3e;font-style:italic;}
-.pop-notes{margin-top:6px;font-size:11.5px;color:#666;line-height:1.4}
+.pop-notes{margin-top:6px;font-size:12px;color:#666;line-height:1.4}
 .pop-cta{margin-top:8px;padding-top:8px;border-top:1px dashed #ddd}
-.pop-cta a{font-size:11.5px;color:#6b4f00;font-weight:600;text-decoration:none}
+.pop-cta a{font-size:12px;color:#6b4f00;font-weight:600;text-decoration:none}
 .pop-cta a:hover{text-decoration:underline}
-.pop-links a{font-size:11px;color:#6b4f00;margin-right:8px}
+.pop-links a{font-size:12px;color:#6b4f00;margin-right:8px}
 @media(max-width:600px){.leg-title{flex-basis:100%;white-space:normal}header{padding:12px 14px}#map{height:calc(100vh - 240px)}.controls{padding:8px 12px;gap:4px}.stats-bar{gap:10px;padding:6px 12px}}
 
 .ctrl-group{display:contents}
@@ -114,17 +114,17 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
   .layout{flex-direction:row;align-items:stretch;height:calc(100vh - 40px);min-height:620px}
   .side{overflow-y:auto;flex:0 0 auto;background:#fff}
   .side-left{width:290px;border-right:1px solid #e2e0db}
-  .side-right{width:240px;border-left:1px solid #e2e0db;order:0}
+  .side-right{width:256px;border-left:1px solid #e2e0db;order:0}
   #map{flex:1 1 auto;width:auto;height:auto;min-height:0}
-  .about-banner{padding:12px 16px;font-size:12.5px;line-height:1.5;border-bottom:1px solid #ecdcb0}
+  .about-banner{padding:12px 16px;font-size:13px;line-height:1.5;border-bottom:1px solid #ecdcb0}
   .side-left .stats-bar{flex-direction:column;align-items:flex-start;flex-wrap:nowrap;gap:8px;padding:12px 16px;border-bottom:1px solid #ecdcb0}
   .side-left .stats-bar .stat-divider{display:none}
   .side-left .stats-bar .stat:last-child{display:none}
   .side-left .stats-bar .stat{align-items:baseline;flex-wrap:wrap}
-  .side-left .stats-bar #stat-projects-breakdown{flex-basis:100%;margin:0;color:#5c5c5c;font-size:11.5px}
+  .side-left .stats-bar #stat-projects-breakdown{flex-basis:100%;margin:0;color:#5c5c5c;font-size:12px}
   .legend{border:none;padding:12px 16px;gap:14px}
   .leg-group{flex-direction:column;align-items:flex-start;flex-wrap:nowrap;gap:5px}
-  .leg-title{flex:0 0 auto;white-space:normal}
+  .leg-title{flex:0 0 auto;white-space:normal;letter-spacing:.02em}
   .leg-credit{margin-left:0;line-height:1.4}
 }
 
@@ -140,11 +140,11 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
   .infobar .search-wrap{max-width:560px;width:100%}
   .infobar .search-bar .share-pill{margin-left:auto;padding:4px 12px;font-size:12px}
   .infobar .controls{flex:0 0 auto;min-width:0;border-bottom:none;padding:4px 18px 8px;gap:4px;row-gap:4px}
-  .infobar .controls .pill{padding:2px 6px;font-size:11px;gap:3px}
-  .infobar .controls .ctrl-label{font-size:11px;font-weight:700;color:#333}
+  .infobar .controls .pill{padding:2px 6px;font-size:12px;gap:3px}
+  .infobar .controls .ctrl-label{font-size:12px;font-weight:700;color:#333}
   .infobar .controls .divider{display:none}
   .infobar .controls .ctrl-group{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-right:6px}
-  .infobar .controls .badge-count{padding:3px 10px;font-size:11.5px}
+  .infobar .controls .badge-count{padding:3px 10px;font-size:12px}
   body{display:flex;flex-direction:column;height:100vh;overflow-y:auto}
   .layout{flex:1 1 auto;height:auto;min-height:480px}
 }
@@ -162,6 +162,15 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
 .skip-link:focus{top:0}
 .leaflet-popup-close-button{color:#444!important}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.leaflet-fade-anim .leaflet-popup,.leaflet-zoom-anim .leaflet-zoom-animated{transition:none!important}}
+
+/* Summary numbers as stat blocks in the left panel. */
+@media(min-width:1000px){
+  .side-left .stats-bar{gap:8px;padding:14px 16px}
+  .side-left .stats-bar .stat{background:#fff;border:1px solid #ecdcb0;border-radius:10px;padding:9px 12px;width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;font-size:13px;color:#3a3426}
+  .side-left .stats-bar .stat strong{font-size:30px;color:#4a3700}
+  .side-left .stats-bar #stat-projects-breakdown{margin:0;font-size:12px;color:#555}
+  .side-left .stats-bar .stat:has(#count){background:none;border:none;padding:0}
+}
 </style>
 <meta name="description" content="Interactive map of local data center moratoria, ordinances and proposed projects across Kentucky, from the Mountain Association.">
 <meta name="theme-color" content="#161616">
@@ -243,7 +252,7 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
   <div class="stat-divider"></div>
   <div class="stat"><span class="badge-count" id="count" role="status" aria-live="polite" style="margin-left:0">0 shown</span></div>
   <div class="stat-divider"></div>
-  <div class="stat" style="color:#666;font-size:11px;">Gray = no known regulation · Amber = city-level only</div>
+  <div class="stat" style="color:#666;font-size:12px;">Gray = no known regulation · Amber = city-level only</div>
 </div>
 <div class="about-banner">
   This map is publicly sourced and maintained by the Mountain Association to track proposed data

@@ -47,6 +47,8 @@ stats bar, and pill-style filters.
   loads, then "Live data loaded <date>". If the Apps Script response ever includes an `updated`
   field, the footer shows "Data last updated <that value>" instead (to be added to `buildMapData`
   in `Code.gs` during the sheet rebuild).
+- Type scale: 12 px minimum, then 13, 14, 15 and 17 px for headings; the three summary numbers
+  are 30 px stat blocks in the left panel (20 px on phones).
 - Popups have a top edge in the stage or regulation color; counties highlight on hover.
 - Accessibility: all text meets WCAG AA contrast (checked with a script over the rendered page),
   visible keyboard focus rings, a "Skip to the map" link, `aria-pressed` on filter buttons, labels
