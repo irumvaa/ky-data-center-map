@@ -8,7 +8,27 @@
 Interactive map of proposed Kentucky data center projects, local moratoria/ordinances/pending
 legislation, and major transmission lines and gas pipelines. Built in the same branded style as
 the Mountain Association's eky-ev-map: county border shading, a search bar with autocomplete, a
-stats bar, and pill-style filters. On wide screens the filters sit in a strip above the map next to the search box, the summary numbers and explanation in a left panel, the legend in a right panel, and the map in the middle (on phones everything stacks).
+stats bar, and pill-style filters.
+
+## Page layout and filters
+- Wide screens (1000 px and up): logo and title share one row; below it a strip holds the search
+  box and the filters (Regulation, Projects, Layers, "Copy link to this view"); under that, a left
+  panel (summary numbers plus the explanation), the map, and a right panel (the legend). Phones
+  get one column: search, filters, summary numbers, explanation, map, legend. The map is fitted to
+  Kentucky on load (`fitKentucky()`, zoom in quarter steps).
+- Regulation filter: multi-select. Click a type to add it, click again to remove it. Matching
+  counties keep their color, the rest fade, and the city markers follow. "All" shows everything;
+  clicking All while it is already active turns every regulation off. Button counts read
+  "N (X county, Y city)" and are computed from the data, so they update after each live refresh.
+- Summary numbers (left panel): "counties with a regulation" counts distinct counties (a county
+  with both a county and a city rule counts once), so it can be lower than the Regulation "All"
+  count, which counts rules.
+- Legend (right panel): grouped as Regulations and moratoriums, Data center projects, and
+  Infrastructure. Its stage counts match the Projects buttons; its regulation counts are always
+  totals and do not change with the filter.
+- Projects: "Show projects" hides or shows every project marker (including the commercial
+  facilities); the stage buttons filter by stage. Search, county popups (which list the county's
+  projects) and shareable links are described in their own sections below.
 
 ## Live data, with a static fallback
 This map is backed by a Google Sheet through a Google Apps Script Web App (see "Live data via
