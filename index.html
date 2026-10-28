@@ -103,6 +103,7 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 .pop-links a{font-size:11px;color:#7d3c98;margin-right:8px}
 @media(max-width:600px){.leg-title{flex-basis:100%;white-space:normal}header{padding:12px 14px}#map{height:calc(100vh - 240px)}.controls{padding:8px 12px;gap:4px}.stats-bar{gap:10px;padding:6px 12px}}
 
+.ctrl-group{display:contents}
 /* Wide screens: explanation and filters on the left, legend on the right. */
 .layout{display:flex;flex-direction:column}
 .side-right{order:3}
@@ -113,11 +114,11 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   .side-right{width:240px;border-left:1px solid #e2e0db;order:0}
   #map{flex:1 1 auto;width:auto;height:auto;min-height:0}
   .about-banner{padding:12px 16px;font-size:12.5px;line-height:1.5;border-bottom:1px solid #e3d8ef}
-  .controls{flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:5px;padding:12px 16px;border-bottom:none}
-  .controls .divider{width:100%;height:1px;margin:6px 0}
-  .controls .ctrl-label{font-weight:700;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:#333;margin:2px 0 0}
-  .controls .pill{justify-content:flex-start;border-radius:8px}
-  .controls .badge-count{margin:6px 0 0;text-align:center}
+  .side-left .stats-bar{flex-direction:column;align-items:flex-start;flex-wrap:nowrap;gap:8px;padding:12px 16px;border-bottom:1px solid #e3d0ee}
+  .side-left .stats-bar .stat-divider{display:none}
+  .side-left .stats-bar .stat:last-child{display:none}
+  .side-left .stats-bar .stat{align-items:baseline;flex-wrap:wrap}
+  .side-left .stats-bar #stat-projects-breakdown{flex-basis:100%;margin:0;color:#777;font-size:11.5px}
   .legend{border:none;padding:12px 16px;gap:14px}
   .leg-group{flex-direction:column;align-items:flex-start;flex-wrap:nowrap;gap:5px}
   .leg-title{flex:0 0 auto;white-space:normal}
@@ -131,12 +132,17 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   .ma-logo{height:40px}
   .topbar header{flex:1;padding:8px 20px}
   .topbar header p{display:none}
-  .infobar{display:flex;align-items:stretch;background:#fff;border-bottom:1px solid #e2e0db}
-  .infobar .stats-bar{flex:1;border-bottom:none;padding:6px 20px;gap:14px}
-  .infobar .stats-bar .stat:last-child,.infobar .stats-bar .stat-divider:nth-last-child(2){display:none}
-  .infobar .search-bar{flex:0 0 340px;border-bottom:none;padding:6px 18px}
+  .infobar{display:flex;align-items:center;background:#fff;border-bottom:1px solid #e2e0db}
+  .infobar .search-bar{flex:0 0 230px;border-bottom:none;padding:6px 12px}
   .infobar .search-wrap{max-width:none}
-  .layout{height:calc(100vh - 100px)}
+  .infobar .controls{flex:1;min-width:0;border-bottom:none;padding:6px 14px 6px 0;gap:5px;row-gap:5px}
+  .infobar .controls .pill{padding:3px 10px;font-size:11.5px}
+  .infobar .controls .ctrl-label{font-size:11px;font-weight:700;color:#333}
+  .infobar .controls .divider{display:none}
+  .infobar .controls .ctrl-group{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-right:10px}
+  .infobar .controls .badge-count{padding:3px 10px;font-size:11.5px}
+  body{display:flex;flex-direction:column;height:100vh;overflow-y:auto}
+  .layout{flex:1 1 auto;height:auto;min-height:600px}
 }
 </style>
 </head>
@@ -158,27 +164,51 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
 </header>
 </div>
 <div class="infobar">
-<div class="stats-bar">
-  <div class="stat"><strong id="stat-reg-counties">0</strong> counties/cities with regulations</div>
-  <div class="stat-divider"></div>
-  <div class="stat"><strong id="stat-no-reg">0</strong> counties with no regulation on file</div>
-  <div class="stat-divider"></div>
-  <div class="stat"><strong id="stat-projects">0</strong> projects tracked<span id="stat-projects-breakdown"></span></div>
-  <div class="stat-divider"></div>
-  <div class="stat" style="color:#888;font-size:11px;">Gray = no known regulation · Amber = city-level only</div>
-</div>
 <div class="search-bar">
   <div class="search-wrap">
-    <input type="text" id="county-search" placeholder="Search a county or project name…" autocomplete="off" oninput="onSearchInput()" onkeydown="onSearchKey(event)"/>
+    <input type="text" id="county-search" placeholder="Search county or project…" autocomplete="off" oninput="onSearchInput()" onkeydown="onSearchKey(event)"/>
     <button class="search-clear" id="search-clear" onclick="clearSearch()" title="Clear">✕</button>
     <div class="suggestions" id="suggestions"></div>
   </div>
   <div id="county-tag-wrap"></div>
   <div id="no-reg-notice-wrap"></div>
 </div>
+<div class="controls">
+  <div class="ctrl-group">
+  <span class="ctrl-label">Regulation (pick any):</span>
+  <button class="pill active" id="btn-reg-all" onclick="setRegFilter('all')">All (<span id="cnt-reg-all"></span>)</button>
+  <button class="pill" id="btn-reg-pending" onclick="setRegFilter('pending')"><span class="dot" style="background:#DC2626"></span>Pending/Proposed (<span id="cnt-reg-pending"></span>)</button>
+  <button class="pill" id="btn-reg-moratorium" onclick="setRegFilter('moratorium')"><span class="dot" style="background:#0072B2"></span>Moratorium (<span id="cnt-reg-moratorium"></span>)</button>
+  <button class="pill" id="btn-reg-ordinance" onclick="setRegFilter('ordinance')"><span class="dot" style="background:#2DD4BF"></span>Ordinance (<span id="cnt-reg-ordinance"></span>)</button>
+  </div>
+  <div class="ctrl-group">
+  <span class="ctrl-label">Projects:</span>
+  <button class="pill active" id="btn-proj-show" onclick="toggleProjects()">Show projects (<span id="cnt-proj-all"></span>)</button>
+  <button class="pill" id="btn-stage-rumored" onclick="toggleStage('Rumored')"><span class="pill-pin" id="pin-rumored"></span>Rumored (<span id="cnt-stage-rumored"></span>)</button>
+  <button class="pill" id="btn-stage-proposed" onclick="toggleStage('Proposed')"><span class="pill-pin" id="pin-proposed"></span>Proposed (<span id="cnt-stage-proposed"></span>)</button>
+  <button class="pill" id="btn-stage-operating" onclick="toggleStage('Operating')"><span class="pill-pin" id="pin-operating"></span>Operating (<span id="cnt-stage-operating"></span>)</button>
+  </div>
+  <div class="ctrl-group">
+  <span class="ctrl-label">Layers:</span>
+  <button class="pill" id="btn-transmission" onclick="toggleTransmission()">Show transmission lines</button>
+  <button class="pill" id="btn-gaspipe" onclick="toggleGasPipelines()">Show gas pipelines</button>
+  <button class="pill" id="btn-share" onclick="copyViewLink()">Copy link to this view</button>
+  </div>
+</div>
 </div>
 <div class="layout">
 <aside class="side side-left">
+<div class="stats-bar">
+  <div class="stat"><strong id="stat-reg-counties">0</strong> counties with a regulation</div>
+  <div class="stat-divider"></div>
+  <div class="stat"><strong id="stat-no-reg">0</strong> counties with no regulation on file</div>
+  <div class="stat-divider"></div>
+  <div class="stat"><strong id="stat-projects">0</strong> projects tracked<span id="stat-projects-breakdown"></span></div>
+  <div class="stat-divider"></div>
+  <div class="stat"><span class="badge-count" id="count" style="margin-left:0">0 shown</span></div>
+  <div class="stat-divider"></div>
+  <div class="stat" style="color:#888;font-size:11px;">Gray = no known regulation · Amber = city-level only</div>
+</div>
 <div class="about-banner">
   This map is publicly sourced and maintained by the Mountain Association to track proposed data
   centers, as well as local regulations and zoning ordinances regarding data centers. Existing
@@ -187,26 +217,6 @@ header p{font-size:12px;color:#c9b3dd;margin-top:2px}
   <span id="report-problem-link-wrap"></span>,
   or to be in touch with Mountain Association at <a href="mailto:energy@mtassociation.org">energy@mtassociation.org</a>.
   New to this map? <a href="help.html">See how it works</a>.
-</div>
-<div class="controls">
-  <span class="ctrl-label">Regulation (pick any):</span>
-  <button class="pill active" id="btn-reg-all" onclick="setRegFilter('all')">All (<span id="cnt-reg-all"></span>)</button>
-  <button class="pill" id="btn-reg-pending" onclick="setRegFilter('pending')"><span class="dot" style="background:#DC2626"></span>Pending/Proposed (<span id="cnt-reg-pending"></span>)</button>
-  <button class="pill" id="btn-reg-moratorium" onclick="setRegFilter('moratorium')"><span class="dot" style="background:#0072B2"></span>Moratorium (<span id="cnt-reg-moratorium"></span>)</button>
-  <button class="pill" id="btn-reg-ordinance" onclick="setRegFilter('ordinance')"><span class="dot" style="background:#2DD4BF"></span>Ordinance (<span id="cnt-reg-ordinance"></span>)</button>
-  <div class="divider"></div>
-  <span class="ctrl-label">Projects:</span>
-  <button class="pill active" id="btn-proj-show" onclick="toggleProjects()">Show projects (<span id="cnt-proj-all"></span>)</button>
-  <button class="pill" id="btn-stage-rumored" onclick="toggleStage('Rumored')"><span class="pill-pin" id="pin-rumored"></span>Rumored (<span id="cnt-stage-rumored"></span>)</button>
-  <button class="pill" id="btn-stage-proposed" onclick="toggleStage('Proposed')"><span class="pill-pin" id="pin-proposed"></span>Proposed (<span id="cnt-stage-proposed"></span>)</button>
-  <button class="pill" id="btn-stage-operating" onclick="toggleStage('Operating')"><span class="pill-pin" id="pin-operating"></span>Operating (<span id="cnt-stage-operating"></span>)</button>
-  <div class="divider"></div>
-  <span class="ctrl-label">Layers:</span>
-  <button class="pill" id="btn-transmission" onclick="toggleTransmission()">Show transmission lines</button>
-  <button class="pill" id="btn-gaspipe" onclick="toggleGasPipelines()">Show gas pipelines</button>
-  <div class="divider"></div>
-  <button class="pill" id="btn-share" onclick="copyViewLink()">Copy link to this view</button>
-  <span class="badge-count" id="count">0 shown</span>
 </div>
 </aside>
 <div id="map"></div>
