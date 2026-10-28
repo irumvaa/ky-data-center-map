@@ -104,6 +104,8 @@ different lightnesses of purple were too easy to confuse from a distance.
   close enough to overlap it, and pins grow slightly up to zoom 14. Crowded areas (Louisville,
   Northern Kentucky) switch later than sparse ones. `renderProjects()` redraws on `zoomend`
   (skipped below zoom 9, where nothing changes). Popups are built only when opened.
+- City-level regulations are drawn as small squares (`cityRegMarkerIcon`), colored by regulation type, so
+  they are not mistaken for the round project dots when zoomed out.
 - Projects with identical coordinates are nudged around a small ring so none hides another.
 - Known city: pinned there (solid pin).
 - Only a county known: placed at that county's real geographic centroid (computed from the
@@ -336,7 +338,7 @@ the HelpContent sheet tab, which is what `help.html`'s own fetch script consumes
 reintroduced through the live pipeline either. Submitters can optionally leave their own email
 for follow-up questions, but that stays in the Sheet, it's never published to the map.
 
-The client always uses fetched field values as-is; it does not re-verify anything. All review/
+The client always uses fetched field values as-is; it does not re-verify anything. The facility `verification` field is not in the Sheet yet; when the Sheet is rebuilt, add it as a column so live refreshes keep the popup wording. All review/
 approval logic lives in the Sheet + Apps Script, not in `index.html` or `help.html`.
 
 ## Deploy
