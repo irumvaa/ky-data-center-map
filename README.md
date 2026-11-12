@@ -196,10 +196,15 @@ idea: fields stay scannable, and anyone who wants more detail can check the sour
 
 ## Commercial colocation/hosting facilities (folded into projects)
 25 facilities from datacentermap.com's 12 Kentucky markets (Flexential, Lumen, Cogent,
-BluegrassNet, CBTS, CyrusOne, etc.) are counted as projects. They stay in their own sheet tab
-and in the `otherDataCenters` array, and `foldFacilitiesIntoProjects()` converts them into
-entries of `projects` when the page loads and again after a live data refresh, so there is no
-separate layer, toggle or icon. `facilityStage()` maps the free-text Status: anything containing
+BluegrassNet, CBTS, CyrusOne, etc.) are counted as projects, with no separate layer, toggle or
+icon. They now live in the main **Projects** tab like every other project (columns `Category` =
+"Commercial facility" and `Verification`; the Notes cell holds the original status text). Run
+`mergeFacilitiesIntoProjects()` in `gas-setup/MergeFacilities.gs` once to move them over from the
+old DCFacilities tab (safe to re-run, no duplicates, the old tab is renamed, not deleted), then
+redeploy the web app as a new version. On the page, `normalizeProject()` tags those rows as
+facilities for the popup wording. The old `otherDataCenters` array and
+`foldFacilitiesIntoProjects()` still work as a fallback for the embedded data and for a Sheet that
+has not been migrated, and a facility already in Projects (same name) is never added twice. `facilityStage()` maps the free-text Status: anything containing
 "proposed" or "construction" becomes Proposed, everything else (including "inferred" and "not
 confirmed") becomes Operating, with the original status text kept in the popup notes.
 Each facility has an optional `verification` value (`confirmed`, `likely`, or `unverified`) set after an independent check in October 2026. Popups say whether independent sources (operator sites, PeeringDB, news) confirmed it, partly confirmed it, or could not verify it. Without the field, a popup says "not independently verified".
@@ -289,6 +294,7 @@ The full backend lives in `gas-setup/` in this repo:
 - **SetupForm.gs**: run once to programmatically build both Forms (`createAddForm()` and
   `createReportForm()`), branching logic included, so nobody hand-builds 30+ questions in
   Google's UI.
+- **MergeFacilities.gs**: run once to move the DCFacilities rows into the Projects tab (adds the `Category` and `Verification` columns at the end), then redeploy the web app.
 - **SetupSheetAndMigrateData.gs**: run once to create every tab this system needs (Regulations,
   Projects, DCFacilities, PendingReview, CountyCentroids, HelpContent) with headers and
   data-validation dropdowns, pre-populated with the map's full current dataset and all 120 KY
@@ -323,8 +329,9 @@ The Apps Script's `doGet()` returns JSON shaped exactly like this for the main m
   "projects": [ { "name": "...", "city": "...", "county": "...", "address": "...",
     "size": "...", "developer": "...", "pz": "...", "utility": "...", "links": ["..."],
     "notes": "...", "stage": "Rumored|Proposed|Operating", "countyWide": false,
-    "lat": 0.0, "lng": 0.0, "tariff": "...", "completionDate": "...", "tenant": "..." } ],
-  "otherDataCenters": [ { "name": "...", "operator": "...", "developer": "...",
+    "lat": 0.0, "lng": 0.0, "tariff": "...", "completionDate": "...", "tenant": "...",
+    "category": "Commercial facility (or blank)", "verification": "confirmed|likely|unverified (or blank)" } ],
+  "otherDataCenters": [ /* optional now; empty once facilities are merged into projects */ { "name": "...", "operator": "...", "developer": "...",
     "status": "...", "size": "...", "address": "...", "city": "...", "county": "...",
     "lat": 0.0, "lng": 0.0, "link": "..." } ]
 }
