@@ -179,6 +179,9 @@ function rowToProject(rec) {
     tariff: String(rec.Tariff || ''),
     completionDate: String(rec.CompletionDate || ''),
     tenant: String(rec.Tenant || ''),
+    // Commercial hosting/colocation facilities live in this same tab now.
+    category: String(rec.Category || ''),
+    verification: String(rec.Verification || '').toLowerCase(),
   };
 }
 
@@ -350,6 +353,7 @@ function listPendingItems() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   [REG_SHEET, PROJ_SHEET, DC_SHEET].forEach(name => {
     const sheet = ss.getSheetByName(name);
+    if (!sheet) return; // DCFacilities is retired once facilities are merged into Projects
     const values = sheet.getDataRange().getValues();
     const headers = values[0];
     const statusCol = headers.indexOf('Status');
@@ -425,6 +429,7 @@ function reviewNextPendingItem() {
 function findFirstPendingRow(ss) {
   for (const sheetName of [REG_SHEET, PROJ_SHEET, DC_SHEET]) {
     const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) continue;
     const values = sheet.getDataRange().getValues();
     const headers = values[0];
     const statusCol = headers.indexOf('Status');

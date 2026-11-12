@@ -347,25 +347,41 @@ function facilityStage(status){
   if(t.includes('proposed') || t.includes('construction')) return 'Proposed';
   return 'Operating';
 }
-function facilityToProject(d){
-  const v = d.verification;
+// Popup wording for a commercial hosting/colocation facility, by how well
+// independent sources (operator site, PeeringDB, news) back it up.
+function commercialNote(v, status){
   const how = v==='confirmed' ? 'first listed on datacentermap.com and confirmed by independent sources (operator website, PeeringDB or news).'
     : v==='likely' ? 'first listed on datacentermap.com. Independent sources point to it, but the details are only partly confirmed.'
     : 'listed on datacentermap.com and not independently verified.';
-  const note = 'Commercial hosting or colocation facility, ' + how
-    + (d.status ? ' Status listed: ' + d.status + '.' : '');
+  return 'Commercial hosting or colocation facility, ' + how + (status ? ' Status listed: ' + status + '.' : '');
+}
+// Facilities now live in the main Projects tab (Category = "Commercial facility",
+// Verification = confirmed / likely / unverified). Tag them so they get the same
+// popup layout and wording as before; the Notes cell holds the status text.
+function normalizeProject(p){
+  if(/commercial/i.test(p.category||'')){
+    p._facility = true;
+    p.notes = commercialNote((p.verification||'').toLowerCase(), p.notes);
+  }
+  return p;
+}
+function facilityToProject(d){
+  const note = commercialNote(d.verification, d.status);
   return {
     name:d.name, city:d.city||'', county:d.county||'', size:d.size||'',
     developer:d.developer||d.operator||'', address:d.address||'',
     stage:facilityStage(d.status), countyWide:false, lat:d.lat, lng:d.lng,
-    links:d.link ? [d.link] : [], notes:note, _facility:true
+    links:d.link ? [d.link] : [], notes:note, _facility:true, _fromDC:true
   };
 }
-// Rebuilds the facility entries inside `projects` from `otherDataCenters`.
-// Safe to call again after a live data refresh (old facility entries are
-// dropped first, so nothing gets counted twice).
+// Rebuilds the facility entries that come from the old separate
+// `otherDataCenters` list. Facilities already in the main Projects list (same
+// name) are skipped, so nothing is counted twice, and once the Sheet has no
+// separate facility tab this does nothing. Safe to call again after a refresh.
 function foldFacilitiesIntoProjects(){
-  projects = projects.filter(p=>!p._facility).concat(otherDataCenters.map(facilityToProject));
+  const have = new Set(projects.filter(p=>!p._fromDC).map(p=>normKey(p.name)));
+  projects = projects.filter(p=>!p._fromDC)
+    .concat(otherDataCenters.filter(d=>!have.has(normKey(d.name))).map(facilityToProject));
 }
 foldFacilitiesIntoProjects();
 let regCountiesSet=new Set();
@@ -1462,10 +1478,18 @@ if (DATA_SOURCE_URL) {
         changed = true;
       }
       if (data && Array.isArray(data.projects) && data.projects.length) {
-        projects = data.projects;
+        projects = data.projects.map(normalizeProject).filter(p=>{
+          // A published row with no usable coordinates would break drawing every
+          // pin, so skip it (and say which one in the console) instead.
+          const ok = Number.isFinite(p.lat) && Number.isFinite(p.lng);
+          if(!ok) console.warn('Skipping project with no Lat/Lng in the Sheet:', p.name);
+          return ok;
+        });
+        // The live feed is the whole truth: if it lists no separate facility
+        // tab, drop the embedded fallback copy instead of re-adding it.
+        otherDataCenters = Array.isArray(data.otherDataCenters) ? data.otherDataCenters : [];
         changed = true;
-      }
-      if (data && Array.isArray(data.otherDataCenters) && data.otherDataCenters.length) {
+      } else if (data && Array.isArray(data.otherDataCenters) && data.otherDataCenters.length) {
         otherDataCenters = data.otherDataCenters;
         changed = true;
       }

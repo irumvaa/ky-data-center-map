@@ -386,7 +386,7 @@ function setupInstructionsTab(ss) {
     ['WHAT EACH TAB IS FOR:'],
     ['Regulations: moratoriums, ordinances, and pending legislation shown on the map.'],
     ['Projects: individual data center projects shown on the map.'],
-    ['DCFacilities: general colocation/hosting listings from datacentermap.com, a separate map layer.'],
+    ['DCFacilities: general colocation/hosting listings from datacentermap.com. Once you run mergeFacilitiesIntoProjects() (MergeFacilities.gs) these move into the Projects tab (Category = Commercial facility) and this tab is archived.'],
     ['PendingReview: reported corrections to existing entries, waiting on someone to check and apply them by hand.'],
     ['CountyCentroids: fallback coordinates, used automatically when a submission has no address.'],
     ["HelpContent: the wording shown on the map's help page. Edit any row's Text to change it, no code needed."],
