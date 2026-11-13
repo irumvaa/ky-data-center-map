@@ -137,7 +137,8 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
   .infobar{display:flex;flex-direction:column;align-items:stretch;background:#fff;border-bottom:1px solid #e2e0db}
   .infobar .search-bar{flex:0 0 auto;border-bottom:none;padding:8px 18px 2px}
   .infobar .search-wrap{max-width:560px;width:100%}
-  .infobar .search-bar .share-pill{margin-left:auto;padding:4px 12px;font-size:12px}
+  .infobar .search-bar .top-actions{margin-left:auto}
+  .infobar .search-bar .share-pill{padding:4px 12px;font-size:12px}
   .infobar .controls{flex:0 0 auto;min-width:0;border-bottom:none;padding:4px 18px 8px;gap:4px;row-gap:4px}
   .infobar .controls .pill{padding:2px 6px;font-size:12px;gap:3px}
   .infobar .controls .ctrl-label{font-size:12px;font-weight:700;color:#333}
@@ -154,6 +155,12 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
 /* Quieter basemap so the data colors stand out. */
 .leaflet-tile-pane{filter:grayscale(.55) saturate(.8) brightness(1.04) contrast(.92)}
 
+/* Prominent link to the help page, under the share button. */
+.top-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.help-btn{display:inline-flex;align-items:baseline;gap:8px;background:#D4A017;color:#161616;font-weight:700;font-size:15px;line-height:1.2;padding:8px 18px;border-radius:22px;text-decoration:none;border:2px solid #161616;white-space:nowrap}
+.help-btn span{font-weight:500;font-size:12px}
+.help-btn:hover{background:#e6b52a}
+@media (max-width:520px){.help-btn span{display:none}.source-tag{white-space:normal;max-width:100%}.search-bar{flex-wrap:wrap}.top-actions{flex-direction:row;align-items:center;justify-content:space-between;width:100%;margin-left:0!important}}
 /* Accessibility: visible keyboard focus, skip link, readable popup close button. */
 :focus-visible{outline:2px solid #161616;outline-offset:2px;box-shadow:0 0 0 4px #D4A017}
 .leaflet-container:focus-visible{outline-offset:-3px;box-shadow:none}
@@ -214,7 +221,10 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
   </div>
   <div id="county-tag-wrap"></div>
   <div id="no-reg-notice-wrap"></div>
-  <button class="pill share-pill" id="btn-share" onclick="copyViewLink()">Copy link to this view</button>
+  <div class="top-actions">
+    <button class="pill share-pill" id="btn-share" onclick="copyViewLink()">Copy link to this view</button>
+    <a class="help-btn" href="help.html">Need help? <span>See how the map works</span></a>
+  </div>
 </div>
 <div class="controls">
   <div class="ctrl-group">
