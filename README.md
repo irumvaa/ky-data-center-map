@@ -173,6 +173,23 @@ Also handles:
   matched, so a broad search like "moratorium" (which matches roughly 18 counties) was only
   ever showing the first 4; raised the cap and added scroll to the dropdown to support it.
 
+### Plain-English questions, smart view, data checks
+- Questions: the search box answers questions such as "moratoria ending this year", "which moratoria
+  expire in the next 90 days", "proposed projects near Louisville", "projects over 500 MW",
+  "moratorium in eastern Kentucky", "moratoria with no end date" or "how many operating projects in
+  Jefferson County". It shows a count, a short list, and a "Show all on the map" row (Enter picks it)
+  that zooms to every match and rings them. Parsing is in `parseQuestion` / `answerQuestion` in
+  `index.html`. A query it does not recognise falls through to the normal search. Size comes from
+  each project's size text (MW or GW); projects with no figure are left out. Regions are rough
+  longitude/latitude bands, and "near" defaults to 40 miles.
+- Smart view: turning on a regulation or stage filter zooms to the places that match it.
+- Data checks: add `?check=1` to the page address (for example `.../ky-data-center-map/?check=1`)
+  to list problems in the data the page is showing: an end date that does not match the start and
+  length, sources that are not links, missing coordinates, duplicates, rows that look like a
+  regulation but sit in Projects, and moratoria hidden because they expired (in case one was
+  extended). It does not open the links, so a dead link can still slip through. A short count also
+  appears in the browser console.
+
 ## Shareable views and county summary
 The Regulation filter is multi-select (`regFilters`, a Set; empty means All; `reg=ordinance,pending` in the URL). Clicking All while it is active sets `regOff` (every regulation faded, no city markers, `reg=none`).
 `viewToHash()` / `applyHash()` keep the filters (reg, stage, proj, tx, gas), selected county and map

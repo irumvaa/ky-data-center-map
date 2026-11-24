@@ -33,7 +33,7 @@ header p{font-size:12px;color:#d9d2bd;margin-top:2px}
 .stat strong{font-size:20px;font-weight:700;color:#4a3700;line-height:1}
 .stat-divider{width:1px;height:18px;background:#ecdcb0}
 .search-bar{background:#fff;border-bottom:1px solid #e2e0db;padding:8px 18px;display:flex;align-items:center;gap:8px;position:relative}
-.search-wrap{position:relative;flex:1;max-width:320px}
+.search-wrap{position:relative;z-index:1100;flex:1;max-width:320px}
 .search-wrap input{width:100%;padding:7px 34px 7px 12px;border-radius:20px;border:1.5px solid #ccc;font-size:13px;outline:none;transition:border-color .15s;color:#1a1a1a;background:#fafafa}
 .search-wrap input:focus{border-color:#D4A017;background:#fff}
 .search-wrap input::placeholder{color:#6b6b6b}
@@ -428,9 +428,11 @@ function daysUntilExpiry(r){
 }
 function isExpiringSoon(r){ const d=daysUntilExpiry(r); return d!==null && d>=0 && d<=EXPIRING_DAYS; }
 function expiryLabel(d){ return d===0?'Expires today':(d===1?'Expires tomorrow':'Expires in '+d+' days'); }
+let droppedMoratoria = [];
 function dropExpiredMoratoria(){
   const today = new Date();
   const before = regulations.length;
+  droppedMoratoria = regulations.filter(r => normKey(r.type)==='moratorium' && parseExpirationDate(r.expiration) && parseExpirationDate(r.expiration) < today);
   regulations = regulations.filter(r => {
     if(normKey(r.type) !== 'moratorium') return true;
     const exp = parseExpirationDate(r.expiration);
@@ -1221,12 +1223,343 @@ function didYouMean(q){
   return (best && bd<=limit && q.length>=4) ? best : null;
 }
 
+// ===========================================================================
+// Plain-English questions. Typing a question such as "moratoria ending this
+// year", "proposed projects near Louisville" or "how many projects over 500 MW"
+// gives a counted answer, a short list, and a button that zooms the map to
+// every match. Anything it does not understand falls through to the normal
+// search, so nothing that worked before changes.
+// ===========================================================================
+const MONTH_IDX = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+const NUM_WORDS = {a:1,an:1,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,twelve:12};
+let lastAnswer = null, answerLayer = null;
+
+function startOfToday(){ const t=new Date(); return new Date(t.getFullYear(),t.getMonth(),t.getDate()); }
+function addUnits(d, n, unit){
+  const x=new Date(d);
+  if(unit==='day') x.setDate(x.getDate()+n);
+  else if(unit==='week') x.setDate(x.getDate()+7*n);
+  else if(unit==='month') x.setMonth(x.getMonth()+n);
+  else x.setFullYear(x.getFullYear()+n);
+  return x;
+}
+function fmtDate(d){ return (d.getMonth()+1)+'/'+d.getDate()+'/'+String(d.getFullYear()).slice(2); }
+function milesBetween(lat1,lng1,lat2,lng2){
+  const R=3958.8, rad=x=>x*Math.PI/180;
+  const dLat=rad(lat2-lat1), dLng=rad(lng2-lng1);
+  const a=Math.sin(dLat/2)**2+Math.cos(rad(lat1))*Math.cos(rad(lat2))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+// A date range for phrases like "this year", "in 2027", "by March", "next 90 days".
+function parseTimeWindow(q){
+  const today=startOfToday(), yr=today.getFullYear();
+  let m;
+  if((m=q.match(/\b(?:in|within|over|during)?\s*the\s+(?:next|coming)\s+(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s+(day|week|month|year)s?\b/)) ||
+     (m=q.match(/\bwithin\s+(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s+(day|week|month|year)s?\b/)) ||
+     (m=q.match(/\bnext\s+(\d+|two|three|four|five|six|seven|eight|nine|ten|twelve)\s+(day|week|month|year)s?\b/))){
+    const n=/^\d+$/.test(m[1])?parseInt(m[1],10):NUM_WORDS[m[1]];
+    return {from:today, to:addUnits(today,n,m[2]), label:'in the next '+n+' '+m[2]+(n===1?'':'s')};
+  }
+  if(/\b(this year|by (the )?end of (the )?year|before (the )?end of (the )?year|rest of the year)\b/.test(q))
+    return {from:today, to:new Date(yr,11,31), label:'by the end of '+yr};
+  if(/\bnext year\b/.test(q)) return {from:new Date(yr+1,0,1), to:new Date(yr+1,11,31), label:'in '+(yr+1)};
+  if((m=q.match(/\b(before|by|in|during|through|until)\s+(20\d\d)\b/))){
+    const y=parseInt(m[2],10);
+    if(m[1]==='before') return {from:today, to:new Date(y-1,11,31), label:'before '+y};
+    if(m[1]==='by'||m[1]==='through'||m[1]==='until') return {from:today, to:new Date(y,11,31), label:'by the end of '+y};
+    return {from:new Date(y,0,1), to:new Date(y,11,31), label:'in '+y};
+  }
+  if((m=q.match(/\b(before|by|in|during|until|through)\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:\s+(20\d\d))?\b/))){
+    const mi=MONTH_IDX[m[2]];
+    let y=m[3]?parseInt(m[3],10):(mi>=today.getMonth()?yr:yr+1);
+    const first=new Date(y,mi,1), last=new Date(y,mi+1,0);
+    const mn=first.toLocaleString('en-US',{month:'long'})+' '+y;
+    if(m[1]==='before') return {from:today, to:new Date(y,mi,0), label:'before '+mn};
+    if(m[1]==='by'||m[1]==='until'||m[1]==='through') return {from:today, to:last, label:'by the end of '+mn};
+    return {from:first, to:last, label:'in '+mn};
+  }
+  if(/\bthis month\b/.test(q)) return {from:today, to:new Date(yr,today.getMonth()+1,0), label:'this month'};
+  if(/\bnext month\b/.test(q)){ const f=new Date(yr,today.getMonth()+1,1); return {from:f, to:new Date(f.getFullYear(),f.getMonth()+1,0), label:'next month'}; }
+  if(/\bsoon\b/.test(q)) return {from:today, to:addUnits(today,EXPIRING_DAYS,'day'), label:'within '+EXPIRING_DAYS+' days'};
+  return null;
+}
+// MW from a free-text size such as "525 MW", "1.2 GW" or "up to 2,200 MW"; null if none.
+function capacityMW(size){
+  const m=String(size||'').replace(/,/g,'').match(/(\d+(?:\.\d+)?)\s*(gw|gigawatts?|mw|megawatts?)\b/i);
+  if(!m) return null;
+  const n=parseFloat(m[1]); return /^g/i.test(m[2]) ? n*1000 : n;
+}
+function placePoint(name){
+  const key=normKey(name.replace(/\s+county$/,'').trim());
+  if(!key) return null;
+  if(cityCoords[key]) return {lat:cityCoords[key][0], lng:cityCoords[key][1], label:key.replace(/\b\w/g,c=>c.toUpperCase())};
+  const c=allCounties.find(x=>normKey(x)===key);
+  if(c){
+    const f=countyGeo && countyGeo.features.find(f=>f.properties.NAME===c);
+    if(f){ const ctr=L.geoJSON(f).getBounds().getCenter(); return {lat:ctr.lat,lng:ctr.lng,label:c+' County'}; }
+  }
+  return null;
+}
+function placeFromPhrase(txt){
+  const words=txt.split(/\s+/).filter(Boolean);
+  for(let n=Math.min(words.length,3); n>=1; n--){
+    const p=placePoint(words.slice(0,n).join(' '));
+    if(p) return p;
+  }
+  return null;
+}
+const REGION_TESTS = {
+  eastern:{label:'eastern Kentucky', f:o=>o.lng>-84.3}, western:{label:'western Kentucky', f:o=>o.lng<-87.0},
+  northern:{label:'northern Kentucky', f:o=>o.lat>38.3}, southern:{label:'southern Kentucky', f:o=>o.lat<37.2},
+  central:{label:'central Kentucky', f:o=>o.lng>-86.2&&o.lng<=-84.3&&o.lat>37.2&&o.lat<38.6}
+};
+
+function parseQuestion(q){
+  const flat=q.replace(/[?!.]+$/,'').replace(/[,;]/g,' ').replace(/\s+/g,' ').trim();
+  const qWord=/^(how many|which|what|where|show|list|find|any|are there|is there|give me)\b/.test(flat);
+  const hasRegWord=/\b(moratori\w+|ordinances?|regulations?|bans?|banned|pauses?|paused|halts?|freezes?)\b/.test(flat);
+  const hasProjWord=/\b(projects?|campus\w*|facilit\w+|data cent\w+|proposed|operating|rumou?red|planned|existing|built|sites?|mining|bitcoin|crypto)\b/.test(flat);
+  const expiryWord=/\b(end\w*|expir\w*|lasts?|runs? out|run out|over)\b/.test(flat);
+  let entity=null;
+  if(hasRegWord && !/\bprojects?\b/.test(flat)) entity='reg';
+  else if(hasProjWord) entity='proj';
+  else if(/\bdata cent\w+/.test(flat) && /\b(moratori\w+)\b/.test(flat)) entity='reg';
+  const f={}; let count=0;
+  if(entity==='reg'){
+    if(/\bmoratori\w+|\bbans?\b|\bbanned\b|\bpauses?\b|\bpaused\b|\bhalts?\b|\bfreezes?\b/.test(flat)){ f.type='moratorium'; count++; }
+    else if(/\bordinances?\b/.test(flat)){ f.type='ordinance'; count++; }
+    const tw=parseTimeWindow(flat);
+    if(tw && (expiryWord || /\b(in|by|before|this|next|within|soon)\b/.test(flat))){ f.time=tw; count++; }
+    if(/\b(no (end|expiration|expiry)( date)?|permanent\w*|indefinite\w*|open.?ended|no end)\b/.test(flat)){ f.noExpiry=true; count++; }
+  } else if(entity==='proj'){
+    if(/\b(proposed|planned|planning)\b/.test(flat)) { f.stage='Proposed'; count++; }
+    else if(/\b(operating|existing|built|running|active)\b/.test(flat)) { f.stage='Operating'; count++; }
+    else if(/\brumou?red\b/.test(flat)) { f.stage='Rumored'; count++; }
+    let m=flat.match(/\b(over|above|more than|larger than|bigger than|at least|greater than)\s+([\d.]+)\s*(gw|gigawatts?|mw|megawatts?)\b/);
+    if(m){ f.minMW=parseFloat(m[2])*(/^g/.test(m[3])?1000:1); count++; }
+    m=flat.match(/\b(under|below|less than|smaller than|at most)\s+([\d.]+)\s*(gw|gigawatts?|mw|megawatts?)\b/);
+    if(m){ f.maxMW=parseFloat(m[2])*(/^g/.test(m[3])?1000:1); count++; }
+    if(/\b(bitcoin|crypto\w*|mining)\b/.test(flat)){ f.topic='mining'; count++; }
+    if(parseTimeWindow(flat) && expiryWord) return null; // projects have no end date
+  } else return null;
+  // Place: "near Louisville", "within 30 miles of Lexington", "in Boyd County", "in eastern Kentucky".
+  let m=flat.match(/\b(?:within\s+(\d+)\s*miles?\s+of|within\s+(\d+)\s*mi\s+of|near|around|close to|outside of|by)\s+([a-z .'-]+)/);
+  if(m && !/^(the )?(end|year|month|week)\b/.test(m[3])){
+    const stop=m[3].split(/\b(?: within | with | that | which | over | under | larger | bigger | and | ending | expiring | expires | in | by | before | this | next | proposed | operating )/)[0].trim();
+    const pt=placeFromPhrase(stop);
+    if(pt){ const wm=flat.match(/\bwithin\s+(\d+)\s*(?:miles?|mi)\b/); f.near={pt, miles:parseInt(m[1]||m[2]||(wm&&wm[1])||'40',10)}; count++; }
+  }
+  if(!f.near){
+    const rg=flat.match(/\b(eastern|western|northern|southern|central)\s+(?:part of\s+)?(?:kentucky|ky)\b/);
+    if(rg){ f.region=REGION_TESTS[rg[1]]; count++; }
+    else {
+      const cm=flat.match(/\bin\s+([a-z]+(?:\s[a-z]+)?)\s+county\b/) || flat.match(/\bin\s+([a-z]+)\b/);
+      if(cm){ const c=allCounties.find(x=>normKey(x)===normKey(cm[1])); if(c){ f.county=c; count++; } }
+    }
+  }
+  const explicitNoun=/\b(projects?|moratori(a|ums?)|ordinances?|data cent\w+)\b/.test(flat);
+  if(count<2 && !(count>=1 && (qWord || (explicitNoun && flat.split(' ').length>=2)))) return null;
+  f.countOnly=/^how many\b/.test(flat);
+  return {entity, f, count};
+}
+
+function answerQuestion(q){
+  let plan;
+  try{ plan=parseQuestion(q); }catch(e){ return null; }
+  if(!plan) return null;
+  const {entity,f}=plan;
+  const inRegion=o=>(!f.region||f.region.f(o));
+  const withDist=o=>{ if(!f.near) return true; o.dist=milesBetween(f.near.pt.lat,f.near.pt.lng,o.lat,o.lng); return o.dist<=f.near.miles; };
+  const items=[];
+  if(entity==='reg'){
+    regulations.forEach((r,i)=>{
+      if(r.lat==null || !isFinite(r.lat)) return;
+      if(f.type && regTypeKey(r.type)!==f.type) return;
+      if(f.county && normKey(r.county)!==normKey(f.county)) return;
+      const o={kind:'reg', i, r, lat:r.lat, lng:r.lng};
+      if(!inRegion(o) || !withDist(o)) return;
+      if(f.noExpiry){
+        const open=!parseExpirationDate(r.expiration) && normKey(r.type)==='moratorium';
+        if(!open) return;
+      }
+      if(f.time){
+        const e=parseExpirationDate(r.expiration);
+        if(normKey(r.type)!=='moratorium' || !e || e<f.time.from || e>f.time.to) return;
+        o.days=daysUntilExpiry(r);
+      }
+      items.push(o);
+    });
+    if(f.time) items.sort((a,b)=>a.days-b.days);
+  } else {
+    projects.forEach((p,i)=>{
+      if(!isFinite(p.lat)||!isFinite(p.lng)) return;
+      if(f.stage && p.stage!==f.stage) return;
+      if(f.county && normKey(p.county)!==normKey(f.county)) return;
+      const o={kind:'proj', i, p, lat:p.lat, lng:p.lng};
+      if(!inRegion(o) || !withDist(o)) return;
+      if(f.minMW!=null||f.maxMW!=null){
+        const mw=capacityMW(p.size);
+        if(mw==null) return;
+        if(f.minMW!=null && mw<=f.minMW) return;
+        if(f.maxMW!=null && mw>=f.maxMW) return;
+        o.mw=mw;
+      }
+      if(f.topic==='mining' && !/mining|bitcoin|crypto/i.test([p.name,p.notes,p.developer].join(' '))) return;
+      items.push(o);
+    });
+    if(f.minMW!=null||f.maxMW!=null) items.sort((a,b)=>b.mw-a.mw);
+  }
+  if(f.near) items.sort((a,b)=>a.dist-b.dist);
+  // Describe what was understood, so the reader can see how the question was read.
+  const parts=[], one=items.length===1;
+  if(entity==='reg') parts.push(f.type==='ordinance'?(one?'ordinance':'ordinances'):(f.type==='moratorium'?(one?'moratorium':'moratoria'):(one?'regulation':'regulations')));
+  else parts.push((f.stage?f.stage.toLowerCase()+' ':'')+(f.topic==='mining'?'crypto-mining ':'')+(one?'project':'projects'));
+  if(f.time) parts.push('ending '+f.time.label.replace(/^by the end of/,'by the end of'));
+  if(f.noExpiry) parts.push('with no end date');
+  if(f.minMW!=null) parts.push('over '+f.minMW+' MW');
+  if(f.maxMW!=null) parts.push('under '+f.maxMW+' MW');
+  if(f.near) parts.push('within '+f.near.miles+' miles of '+f.near.pt.label);
+  if(f.region) parts.push('in '+f.region.label);
+  if(f.county) parts.push('in '+f.county+' County');
+  const n=items.length;
+  const what=parts.join(' ');
+  const summary = n ? (f.countOnly ? n+' '+what : n+' '+what)
+                    : 'No '+what+' found.';
+  const note = (entity==='proj' && (f.minMW!=null||f.maxMW!=null)) ? 'Size is read from each project’s size field; projects without a MW or GW figure are left out.' : '';
+  const title = what.charAt(0).toUpperCase()+what.slice(1);
+  return {items, summary, note, title};
+}
+function escHtml(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function renderAnswer(a){
+  const sugEl=document.getElementById('suggestions'); suggestIdx=-1; lastAnswer=a;
+  let html='';
+  if(!a.items.length){
+    html='<div class="sug-empty" style="padding:10px 14px;font-size:13px;color:#555;">'+escHtml(a.summary)+'</div>';
+  } else {
+    html+='<div class="sug-answer" style="padding:10px 14px 4px;font-size:13px;font-weight:700;color:#161616;">'+escHtml(a.summary)+'</div>';
+    if(a.note) html+='<div style="padding:0 14px 6px;font-size:12px;color:#555;">'+escHtml(a.note)+'</div>';
+    html+='<div class="suggestion-item" data-type="answer" data-value="0"><span class="sug-type-tag sug-tag-county">Map</span>Show all '+a.items.length+' on the map</div>';
+    a.items.slice(0,8).forEach(o=>{
+      if(o.kind==='reg'){
+        const r=o.r, d=daysUntilExpiry(r);
+        const tail=(o.days!=null||d!=null)? ' · ends '+r.expiration+(d!=null&&d>=0&&d<=EXPIRING_DAYS?' ('+expiryLabel(d).toLowerCase()+')':'') : (normKey(r.type)==='moratorium'?' · no end date':'');
+        html+='<div class="suggestion-item" data-type="regulation" data-value="'+o.i+'"><span class="sug-type-tag" style="background:#f6ecc9;color:#4a3700;">Regulation</span>'+escHtml(r.city||r.county+' County')+'<span class="sug-sub">'+escHtml(r.type+', '+r.county+' County'+tail+(o.dist!=null?' · '+Math.round(o.dist)+' mi':''))+'</span></div>';
+      } else {
+        const p=o.p;
+        html+='<div class="suggestion-item" data-type="project" data-value="'+o.i+'"><span class="sug-type-tag sug-tag-project">Project</span>'+escHtml(p.name)+'<span class="sug-sub">'+escHtml(p.county+' County · '+p.stage+(o.mw!=null?' · '+o.mw+' MW':'')+(o.dist!=null?' · '+Math.round(o.dist)+' mi':''))+'</span></div>';
+      }
+    });
+    if(a.items.length>8) html+='<div style="padding:6px 14px 8px;font-size:12px;color:#555;">'+(a.items.length-8)+' more. Use “Show all” to see them on the map.</div>';
+  }
+  sugEl.innerHTML=html;
+  sugEl.querySelectorAll('.suggestion-item').forEach(el=>el.addEventListener('click',()=>{
+    const t=el.dataset.type, v=el.dataset.value;
+    if(t==='answer') showAnswerOnMap();
+    else if(t==='regulation') selectRegulation(parseInt(v));
+    else selectProject(parseInt(v));
+  }));
+  sugEl.classList.add('open');
+}
+// Zoom to every match and ring each one, so a result set is visible at a glance.
+function showAnswerOnMap(){
+  const a=lastAnswer; if(!a||!a.items.length) return;
+  document.getElementById('county-search').value='';
+  document.getElementById('search-clear').classList.remove('visible');
+  closeSuggestions();
+  selectedCounty=null;
+  document.getElementById('county-tag-wrap').innerHTML='<div class="county-tag">'+escHtml(a.title)+' <button onclick="clearSearch()">✕</button></div>';
+  document.getElementById('no-reg-notice-wrap').innerHTML='';
+  if(countyHighlightLayer){ map.removeLayer(countyHighlightLayer); countyHighlightLayer=null; }
+  if(answerLayer){ map.removeLayer(answerLayer); answerLayer=null; }
+  answerLayer=L.layerGroup(a.items.map(o=>L.circleMarker([o.lat,o.lng],{radius:16,color:'#161616',weight:3,fillColor:'#D4A017',fillOpacity:0.12,interactive:false}))).addTo(map);
+  const pts=a.items.map(o=>[o.lat,o.lng]);
+  if(pts.length===1) map.setView(pts[0],10); else map.fitBounds(L.latLngBounds(pts),{padding:[50,50],maxZoom:9});
+  renderProjects();
+}
+function fitToFilters(){
+  if(selectedCounty) return;
+  const pts=[];
+  if(!regOff && regFilters.size) regulations.filter(regMatchesFilter).forEach(r=>{ if(isFinite(r.lat)&&isFinite(r.lng)) pts.push([r.lat,r.lng]); });
+  if(showProjects && stageFilters.size) projects.filter(p=>stageFilters.has(p.stage)).forEach(p=>{ if(isFinite(p.lat)&&isFinite(p.lng)) pts.push([p.lat,p.lng]); });
+  if(!pts.length){ if(!regFilters.size && !stageFilters.size) fitKentucky(); return; }
+  if(pts.length===1) map.setView(pts[0],9); else map.fitBounds(L.latLngBounds(pts),{padding:[40,40],maxZoom:9});
+}
+
+// ===========================================================================
+// Data checks. Looks for the kind of problem a person would otherwise have to
+// spot by eye: an end date that does not match the start and length, a source
+// that is not a link, a pin with no coordinates, and so on. Add ?check=1 to
+// the page address to see the list. Nothing here changes any data.
+// ===========================================================================
+function impliedEnd(r){
+  const per=String(r.period||'');
+  if(/extend|until|through|amend|renew/i.test(per)) return null;
+  const m=per.match(/(\d+(?:\.\d+)?)\s*(day|week|month|year)s?/i);
+  if(!m) return null;
+  let start=parseExpirationDate(r.startDate);
+  if(!start){
+    const my=per.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*(?:\d{1,2}(?:st|nd|rd|th)?,?\s*)?(20\d\d)/i);
+    if(my) start=new Date(parseInt(my[2],10), MONTH_IDX[my[1].toLowerCase()], 1);
+  }
+  if(!start) return null;
+  return addUnits(start, parseFloat(m[1]), m[2].toLowerCase());
+}
+function runDataChecks(){
+  const issues=[];
+  const add=(level,where,msg)=>issues.push({level,where,msg});
+  const bad=l=>!/^https?:\/\/\S+$/i.test(String(l||'').trim());
+  regulations.forEach(r=>{
+    const w=(r.city?r.city+', ':'')+r.county+' County ('+r.type+')';
+    if(!isFinite(r.lat)||!isFinite(r.lng)) add('error',w,'No map coordinates, so it cannot be shown.');
+    if(!(r.links||[]).length) add('warn',w,'No source link.');
+    (r.links||[]).filter(bad).forEach(l=>add('error',w,'Source is not a web link: “'+String(l).slice(0,60)+'”.'));
+    if(r.expiration && !parseExpirationDate(r.expiration)) add('error',w,'Expiration “'+r.expiration+'” is not a date (use M/D/YY), so it never expires on the map.');
+    if(normKey(r.type)==='moratorium' && !r.expiration && !/until|permanent|indefinite|unclear|regulation|ordinance|verbal|ban/i.test([r.period,r.notes].join(' ')))
+      add('warn',w,'Moratorium with no end date and no explanation of why.');
+    const e=parseExpirationDate(r.expiration), imp=impliedEnd(r);
+    if(e && imp && Math.abs(e-imp)>45*86400000)
+      add('warn',w,'Expiration '+r.expiration+' does not match the period (“'+String(r.period).slice(0,50)+'”, which suggests about '+fmtDate(imp)+'). Check for a typo or an extension.');
+  });
+  const seen={};
+  projects.forEach(p=>{
+    const w=p.name+' ('+p.county+' County)';
+    const k=normKey(p.name); if(seen[k]) add('error',w,'Duplicate project name.'); seen[k]=1;
+    if(!isFinite(p.lat)||!isFinite(p.lng)) add('error',w,'No map coordinates.');
+    (p.links||[]).filter(bad).forEach(l=>add('error',w,'Source is not a web link: “'+String(l).slice(0,60)+'”.'));
+    if(!(p.links||[]).length) add('warn',w,'No source link.');
+    if(/moratorium|pause|ban\b/i.test(p.pz||'') && (!p.developer || /^n\/?a$/i.test(String(p.developer).trim())))
+      add('warn',w,'Looks like a regulation rather than a project (no developer, and the zoning text describes a pause).');
+    if(p._facility && p.verification==='unverified') add('info',w,'Commercial facility marked unverified.');
+  });
+  droppedMoratoria.forEach(r=>add('info',(r.city?r.city+', ':'')+r.county+' County','Hidden because it expired on '+r.expiration+'. If it was extended, update its Expiration in the Sheet.'));
+  const n=issues.filter(i=>i.level!=='info').length;
+  if(n) console.info('Data checks: '+n+' item(s) to review. Add ?check=1 to the page address to see them.');
+  window.__dataChecks=issues;
+  return issues;
+}
+function showDataChecks(){
+  const issues=runDataChecks();
+  let box=document.getElementById('data-check-panel');
+  if(box) box.remove();
+  box=document.createElement('div'); box.id='data-check-panel'; box.setAttribute('role','dialog'); box.setAttribute('aria-label','Data checks');
+  box.style.cssText='position:fixed;right:12px;bottom:12px;z-index:3000;width:min(460px,calc(100vw - 24px));max-height:70vh;overflow:auto;background:#fff;border:2px solid #161616;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:13px/1.4 system-ui,sans-serif;color:#161616;';
+  const rank={error:0,warn:1,info:2}, tag={error:'Fix',warn:'Check',info:'Note'}, col={error:'#b42318',warn:'#8a5a00',info:'#555'};
+  issues.sort((a,b)=>rank[a.level]-rank[b.level]);
+  box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#4a4a4a;color:#fff;border-radius:6px 6px 0 0;"><strong>Data checks ('+issues.filter(i=>i.level!=='info').length+' to review)</strong><button id="data-check-close" aria-label="Close data checks" style="background:none;border:0;color:#fff;font-size:16px;cursor:pointer;">✕</button></div>'+
+    (issues.length?'<ul style="list-style:none;margin:0;padding:6px 12px 12px;">'+issues.map(i=>'<li style="padding:6px 0;border-bottom:1px solid #eee;"><span style="font-weight:700;color:'+col[i.level]+';">'+tag[i.level]+'</span> <strong>'+escHtml(i.where)+'</strong><br>'+escHtml(i.msg)+'</li>').join('')+'</ul>':'<p style="padding:12px;">No problems found.</p>')+
+    '<p style="padding:0 12px 12px;color:#555;font-size:12px;">These checks read the data this page is showing. They do not open the source links, so a link can still be dead.</p>';
+  document.body.appendChild(box);
+  document.getElementById('data-check-close').onclick=()=>box.remove();
+}
+
 function onSearchInput(){
   const raw=document.getElementById('county-search').value.trim();
   const q=raw.toLowerCase();
   document.getElementById('search-clear').classList.toggle('visible', q.length>0);
   if(!q){ closeSuggestions(); return; }
   if(q.length < 2){ closeSuggestions(); return; } // a single character matches almost everything — wait for a real query
+  const nl = answerQuestion(q);
+  if(nl){ renderAnswer(nl); return; }
   let terms = searchTerms(q);
   // "expiring", "ending soon": jump straight to moratoria that end within 60 days.
   const wantsExpiring = /\b(expir\w*|ending soon|ends soon|about to end|running out)\b/.test(q);
@@ -1359,6 +1692,7 @@ function onSearchKey(e){
     if(t==='county') selectCounty(v);
     else if(t==='regulation') selectRegulation(parseInt(v));
     else if(t==='city') selectCity(v);
+    else if(t==='answer') showAnswerOnMap();
     else selectProject(parseInt(v));
   }
   else if(e.key==='Escape') clearSearch();
@@ -1433,6 +1767,7 @@ function clearSearch(){
   document.getElementById('no-reg-notice-wrap').innerHTML='';
   closeSuggestions();
   if(countyHighlightLayer){ map.removeLayer(countyHighlightLayer); countyHighlightLayer=null; }
+  if(answerLayer){ map.removeLayer(answerLayer); answerLayer=null; }
   fitKentucky();
   renderProjects();
 }
@@ -1512,6 +1847,8 @@ if (DATA_SOURCE_URL) {
         dropExpiredMoratoria();
         buildSearchIndex();
         renderAll();
+        runDataChecks();
+        if(/[?&]check=1\b/.test(location.search)) showDataChecks();
       }
     })
     .catch(err => {
@@ -1571,6 +1908,12 @@ map.on('moveend', syncHash);
 });
 applyHash();
 syncPressed();
+runDataChecks();
+if(/[?&]check=1\b/.test(location.search)) showDataChecks();
+// Smart view: turning a regulation or stage filter on zooms to the matching places.
+['btn-reg-all','btn-reg-pending','btn-reg-moratorium','btn-reg-expiring','btn-reg-ordinance','btn-stage-rumored','btn-stage-proposed','btn-stage-operating'].forEach(id=>{
+  const b=document.getElementById(id); if(b) b.addEventListener('click',()=>setTimeout(fitToFilters,0));
+});
 </script>
 </body>
 </html>
