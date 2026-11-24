@@ -1018,7 +1018,7 @@
     return { f: best, s: bs };
   }
 
-  function route(qRaw) {
+  function routeCore(qRaw) {
     const q = String(qRaw || '').trim(); const qn = norm(q);
     if (!qn) return q ? suggestionsAnswer() : null;
     if (/^(hi|hello|hey|good (morning|afternoon|evening)|yo)\b/.test(qn) && qn.split(' ').length <= 4) return R(P('Hello! Ask me about any project, county, city or rule on the map, or how the map works.'), ['What’s the big picture?', 'Which moratoria end soon?', 'How do I read the colors?']);
@@ -1247,6 +1247,80 @@
     return out.slice(0, 3);
   }
 
+
+  // ------------------------------------------------ typo tolerance
+  const BASE_WORDS = ('a about above across add added adding after again all also am an and any anyone anything are area aren around as ask asked at available back be because been before being below best between big biggest both build built but buy by call called can cannot capacity change changed check city close closest color colors colour colours come comes compare concern concerns confirmed contact could count counties county create created current currently data date dates day days decide did different do does doing done down download during each early east eastern edit either else email end ended ending ends enough even ever every everything example expire expired expires expiring explain fact far few file filter find first for form found from full get give given go going gone good got great had has have having help her here hers high him his how however if in include into is isn it its just keep kentucky kind know known large largest last late later latest least less let like likely limit list little local located location long look looking lot made make makes many map maps may maybe me mean means meaning might mile miles more most move much must my name named near nearby nearest need needs never new newest next no none not nothing now number of off often old oldest on once one only open or other our out over own page part pending people per permanent place places planned please point power powers project projects proposed propose put question questions quick rather read real really recent recently regarding remove removed report reported right rule rules run same say see seen send share show shown shows since site size small smallest so some someone something soon source sources south state states still stop such sure take tell than that the their them then there these they thing things this those through time to today too top total track tracking true try turn two under until up update updated updates upon us use used user using usual very via want wants was way we web well went were west what when where whether which while who whom whose why will with within without would year years yes yet you your moratorium moratoria ordinance ordinances operating rumored proposed pending developer developers tenant tenants utility utilities tariff tariffs hyperscale hyperscaler megawatt megawatts gigawatt gigawatts transmission substation pipeline pipelines zoning planning commission council fiscal court magistrate ratepayer ratepayers electricity water cooling noise tax taxes incentive incentives jobs investment billion million acres facility facilities campus verified unverified legend marker markers pin pins square squares stripe stripes dashed gray grey blue teal orange red green yellow purple layer layers toggle button buttons search zoom pan mobile phone print link links copy expiring soon restrict restricted restriction ban banned pause paused approve approved approval denied withdrawn extended extend extension lapse lapsed status stage stages timeline notes address completion expected capacity megawatts mw gw kv').split(/\s+/);
+  const TYPO = { sig: '', words: new Map() };
+  function typoVocab() {
+    const sg = sig(); if (TYPO.sig === sg) return TYPO.words;
+    const w = new Map(); const add = (t, n) => { t = String(t || '').toLowerCase(); if (t.length < 3) return; w.set(t, (w.get(t) || 0) + (n || 1)); };
+    BASE_WORDS.forEach(t => add(t, 2));
+    const feedText = txt => norm(String(txt == null ? '' : txt)).split(' ').forEach(t => { if (/^[a-z]+$/.test(t)) add(t, 1); });
+    projects.forEach(p => ['name', 'city', 'county', 'address', 'developer', 'utility', 'tenant', 'tariff', 'pz', 'stage', 'notes'].forEach(k => feedText(p[k])));
+    regulations.forEach(r => ['county', 'city', 'level', 'type', 'notes'].forEach(k => feedText(r[k])));
+    (allCounties || []).forEach(feedText);
+    try { Object.keys(cityToCounty || {}).forEach(feedText); } catch (e) {}
+    FAQ.forEach(f => feedText(f.kw)); GLOSS.forEach(g => g.t.forEach(feedText));
+    TYPO.words = w; TYPO.sig = sg; return w;
+  }
+  // Damerau-Levenshtein (counts a swap of two neighbouring letters as one edit), with early exit.
+  function dlDist(a, b, max) {
+    const m = a.length, n = b.length; if (Math.abs(m - n) > max) return max + 1;
+    let p2 = null, p1 = Array.from({ length: n + 1 }, (_, j) => j);
+    for (let i = 1; i <= m; i++) {
+      const cur = [i]; let rowMin = i;
+      for (let j = 1; j <= n; j++) {
+        let v = Math.min(p1[j] + 1, cur[j - 1] + 1, p1[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, p2[j - 2] + 1);
+        cur[j] = v; if (v < rowMin) rowMin = v;
+      }
+      if (rowMin > max) return max + 1;
+      p2 = p1; p1 = cur;
+    }
+    return p1[n];
+  }
+  function bestWord(t, V) {
+    const max = t.length >= 6 ? 2 : 1;
+    let best = null, bd = 99, bn = -1;
+    for (const [w, n] of V) {
+      if (Math.abs(w.length - t.length) > max) continue;
+      if (t.length <= 4 && w[0] !== t[0]) continue;
+      const d = dlDist(t, w, max);
+      if (d > max) continue;
+      if (d < bd || (d === bd && n > bn)) { best = w; bd = d; bn = n; }
+    }
+    return best;
+  }
+  function correctTypos(qRaw) {
+    const V = typoVocab();
+    let text = String(qRaw || '').toLowerCase()
+      .replace(/\bdata\s?cent(?:re|er)s?\b/g, m => /s$/.test(m) ? 'data centers' : 'data center')
+      .replace(/\bdatacent\w*\b/g, 'data center');
+    const toks = norm(text).split(' ').filter(Boolean);
+    const out = []; let changed = false;
+    for (let i = 0; i < toks.length; i++) {
+      const t = toks[i];
+      if (t.length < 4 || /\d/.test(t) || V.has(t) || V.has(stemw(t)) || STOP.has(t)) { out.push(t); continue; }
+      // two pieces run together or split apart
+      const nx = toks[i + 1];
+      if (nx && !V.has(nx) && V.has(t + nx)) { out.push(t + nx); i++; changed = true; continue; }
+      const fx = bestWord(t, V);
+      if (fx) { out.push(fx); changed = true; } else out.push(t);
+    }
+    return changed ? out.join(' ') : null;
+  }
+  const NOT_FOUND = /couldn.t find that on the map|not something the map tracks/i;
+  function route(qRaw) {
+    if (/^\s*(in )?(kentucky|ky)\s*(data cent\w+|projects?|moratori\w+|rules?)?\s*$/i.test(String(qRaw || ''))) return routeCore('what is the big picture');
+    let fixed = null;
+    try { fixed = correctTypos(qRaw); } catch (e) { fixed = null; }
+    if (fixed && norm(fixed) !== norm(qRaw)) {
+      const r = routeCore(fixed);
+      if (r && !NOT_FOUND.test(r.html)) { r.html = '<p class="ask-note"><em>Showing results for “' + esc(fixed) + '”.</em></p>' + r.html; return r; }
+    }
+    return routeCore(qRaw);
+  }
+
   function ask(q) {
     openPanel();
     msg('user', esc(q));
@@ -1262,7 +1336,7 @@
   function openPanel() { if (state.open) { input.focus(); return; } state.open = true; lastFocus = document.activeElement; panel.classList.add('open'); btnEl.setAttribute('aria-expanded', 'true'); setTimeout(() => input.focus(), 0); }
   function closePanel(keepFocus) { if (!state.open) return; state.open = false; panel.classList.remove('open'); btnEl.setAttribute('aria-expanded', 'false'); if (!keepFocus) btnEl.focus(); }
 
-  window.askTheMap = { ask, route, findEntities, kb, open: openPanel, close: closePanel };
+  window.askTheMap = { ask, route, correctTypos, findEntities, kb, open: openPanel, close: closePanel };
   try {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
   } catch (e) { console.warn('Ask the map could not start', e); }
