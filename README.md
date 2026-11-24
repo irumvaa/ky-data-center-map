@@ -192,6 +192,9 @@ Also handles:
 
 ## Ask the map (chat helper)
 
+**Search anything.** The chat keeps a full-text index of every field of every project and rule (name, address, size, developer, tenant, utility, tariff, notes, stage, source links), plus the text of `help.html` and the page. A distinctive word like "holloway" or "submer" shows which records mention it, with a short snippet and a Show on map button. See `ftSearch` and `ftAnswer` in `assistant.js`.
+
+
 `assistant.js` adds a gold "Ask the map" button in the bottom right corner of the window (on a short window it can sit over the bottom of the legend; the chat panel itself opens clear of the legend). It is a built-in, rule-based helper, not a language model. It runs in the page, reads the same `projects` and `regulations` the map draws, makes no network calls and stores nothing.
 
 - **What it answers:** projects, counties, cities, developers, power suppliers and tenants; rules in a place (including recently expired moratoria); comparisons; gaps (proposed projects in counties with no rule); conflicts (proposed projects in counties with a moratorium); totals and rankings; plain-English list questions (shared with the search box); how the map works; and short definitions of any term used on the map (moratorium, TSR, EKPC, tariff, HIFLD, substation, zoning and so on).

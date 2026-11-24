@@ -862,6 +862,135 @@
     return null;
   }
 
+
+  // ------------------------------------------------ full-text index over everything on the map
+  const FT = { sig: '', docs: [], df: {}, N: 0, help: [], helpTried: false, vocab: null };
+  const stemw = t => (t.length > 4 && /ies$/.test(t)) ? t.slice(0, -3) + 'y' : (t.length > 3 && /s$/.test(t) && !/(ss|us|is)$/.test(t)) ? t.slice(0, -1) : t;
+  function ftTokens(text) {
+    const raw = String(text == null ? '' : text).toLowerCase();
+    const out = [];
+    (raw.match(/\$?\d[\d,]*(?:\.\d+)?/g) || []).forEach(n => { const c = n.replace(/[$,]/g, ''); if (c) out.push(c); });
+    norm(raw.replace(/\d[\d,]*(?:\.\d+)?/g, ' ')).split(' ').forEach(w => { if (w.length >= 2 && !STOP.has(w)) out.push(stemw(w)); });
+    return out;
+  }
+  const FT_W = { Name: 3, County: 2, City: 2, Developer: 2, Tenant: 2, Type: 2, Address: 1.5 };
+  function recDocs() {
+    const docs = [];
+    projects.forEach((p, i) => {
+      const f = { Name: p.name, City: p.city, County: p.county + ' County', Address: p.address, Size: p.size, Developer: p.developer, 'Planning and zoning': p.pz, Utility: p.utility, Tariff: p.tariff, 'Expected completion': p.completionDate, Tenant: p.tenant, Notes: p.notes, Stage: p.stage + (p._facility ? ' commercial facility ' + (p.verification || '') : ''), Sources: (p.links || []).join(' ') };
+      docs.push({ kind: 'proj', i, title: p.name, sub: p.county + ' Co., ' + p.stage, fields: f });
+    });
+    regulations.forEach((r, i) => {
+      const f = { Type: r.type + ' ' + (r.level || ''), County: r.county + ' County', City: r.city, Notes: r.notes, Period: r.period, 'Start date': r.startDate, Ends: r.expiration, Address: r.address, Sources: (r.links || []).join(' ') };
+      docs.push({ kind: 'reg', i, title: describeReg(r).split(',')[0], sub: r.county + ' Co.', fields: f });
+    });
+    return docs;
+  }
+  function pageDocs() {
+    const out = [];
+    try {
+      const skip = $('ask-panel');
+      const clone = document.body.cloneNode(true);
+      ['#ask-panel', '#ask-btn', '#map', 'script', 'style', '#data-check-panel'].forEach(sel => clone.querySelectorAll(sel).forEach(n => n.remove()));
+      String(clone.innerText || clone.textContent || '').split(/\n+/).map(x => x.replace(/\s+/g, ' ').trim()).filter(x => x.length >= 25).forEach(t => out.push({ kind: 'page', title: 'On the map page', sub: '', fields: { Text: t } }));
+    } catch (e) {}
+    return out;
+  }
+  function buildFT() {
+    const docs = recDocs().concat(FT.help.map(h => ({ kind: 'help', title: h.title, sub: 'Help page', fields: { Text: h.text } }))).concat(pageDocs());
+    const df = {};
+    docs.forEach(d => {
+      d.tok = {}; d.all = new Set();
+      Object.keys(d.fields).forEach(k => { const toks = ftTokens(d.fields[k]); d.tok[k] = new Set(toks); toks.forEach(t => d.all.add(t)); });
+      d.all.forEach(t => { df[t] = (df[t] || 0) + 1; });
+    });
+    FT.docs = docs; FT.df = df; FT.N = docs.length; FT.sig = sig() + '|' + FT.help.length;
+  }
+  function ft() { if (FT.sig !== sig() + '|' + FT.help.length) buildFT(); return FT; }
+  function loadHelp() {
+    if (FT.helpTried) return; FT.helpTried = true;
+    try {
+      fetch('help.html', { credentials: 'omit' }).then(r => r.ok ? r.text() : '').then(t => {
+        if (!t) return;
+        const doc = new DOMParser().parseFromString(t, 'text/html'); let h2 = 'Help page';
+        doc.querySelectorAll('h2, p, li, .swatch-row').forEach(n => {
+          if (n.tagName === 'H2') { h2 = n.textContent.trim(); return; }
+          const tx = n.textContent.replace(/\s+/g, ' ').trim(); if (tx.length >= 25) FT.help.push({ title: h2, text: tx });
+        });
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  function ftSearch(tokens, opts) {
+    opts = opts || {};
+    const F = ft(); const q = [...new Set(tokens)]; if (!q.length) return [];
+    const res = [];
+    F.docs.forEach(d => {
+      let score = 0, hit = 0; const fields = new Set(); const miss = [];
+      q.forEach(t => {
+        const idf = Math.log(1 + F.N / (F.df[t] || 1));
+        let best = 0, bf = null;
+        Object.keys(d.tok).forEach(k => { if (d.tok[k].has(t)) { const w = FT_W[k] || 1; if (w > best) { best = w; bf = k; } fields.add(k); } });
+        if (!best && t.length >= 6 && !/\d/.test(t)) { for (const dt of d.all) { if (dt.length >= 5 && Math.abs(dt.length - t.length) <= 1 && editDistance(dt, t) <= 1) { best = 0.6; Object.keys(d.tok).forEach(k => { if (d.tok[k].has(dt)) fields.add(k); }); break; } } }
+        if (best) { hit++; score += idf * best; } else miss.push(t);
+      });
+      if (!hit) return;
+      const cov = hit / q.length;
+      if (opts.must && !opts.must.every(m => d.all.has(m))) return;
+      if (cov < (opts.minCov || 0.6)) return;
+      res.push({ d, score: score * (0.5 + cov), cov, fields: [...fields] });
+    });
+    return res.sort((a, b) => b.score - a.score);
+  }
+  function snippet(d, tokens) {
+    for (const k of Object.keys(d.fields)) {
+      const text = String(d.fields[k] || ''); if (!text) continue;
+      for (const t of tokens) {
+        if (!d.tok[k].has(t)) continue;
+        const rx = new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/y$/, '(?:y|ies)') + '\\w*', 'i');
+        const m = rx.exec(text); if (!m) { const rx2 = new RegExp(t.slice(0, Math.max(3, t.length - 1)).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); const m2 = rx2.exec(text); if (!m2) continue; return { field: k, text: ctx(text, m2.index, m2[0].length) }; }
+        return { field: k, text: ctx(text, m.index, m[0].length) };
+      }
+    }
+    return null;
+  }
+  function ctx(text, at, len) {
+    const a = Math.max(0, at - 70), b = Math.min(text.length, at + len + 90);
+    return (a > 0 ? '\u2026' : '') + text.slice(a, at) + '**' + text.slice(at, at + len) + '**' + text.slice(at + len, b) + (b < text.length ? '\u2026' : '');
+  }
+  function ftAnswer(qn, opts) {
+    opts = opts || {};
+    const toks = ftTokens(qn); if (!toks.length) return null;
+    const hits = ftSearch(toks, opts); if (!hits.length) return null;
+    const recs = hits.filter(h => h.d.kind === 'proj' || h.d.kind === 'reg').slice(0, 6);
+    const docs = hits.filter(h => h.d.kind === 'help' || h.d.kind === 'page').slice(0, 2);
+    if (!recs.length && !docs.length) return null;
+    const label = String(qn).replace(/\s+/g, ' ').trim().slice(0, 50);
+    let h = P(recs.length ? 'Here is where \u201c' + label + '\u201d shows up on the map:' : 'Here is what the map\u2019s own text says about \u201c' + label + '\u201d:');
+    if (recs.length) h += UL(recs.map(x => { const sn = snippet(x.d, toks); return '**' + x.d.title + '** (' + x.d.sub + ')' + (sn ? ' \u2014 ' + sn.field.toLowerCase() + ': ' + sn.text : ''); }).map(x => x.replace(/ \u2014 /, ', ')));
+    if (docs.length) h += UL(docs.map(x => { const sn = snippet(x.d, toks); return '**' + x.d.title + ':** ' + (sn ? sn.text : String(x.d.fields.Text).slice(0, 160)); }));
+    const items = recs.map(x => x.d.kind === 'proj' ? projItem(x.d.i) : regItem(x.d.i));
+    return R(h + '<div class="ask-actions">' + (items.length ? mapBtn(items, 'Matches for ' + label) : '') + (docs.some(x => x.d.kind === 'help') ? '<a class="ask-act" href="' + HELP_PAGE + '" style="text-decoration:none">Open the full guide</a>' : '') + '</div>', recs.length && recs[0].d.kind === 'proj' ? ['Tell me about ' + recs[0].d.title] : []);
+  }
+  function distinctiveHook(qn, hasNamed) {
+    if (hasNamed) return null;
+    const F = ft();
+    const toks = ftTokens(qn);
+    const V = vocab();
+    const dist = toks.filter(t => F.df[t] && F.df[t] <= 4 && !V.has(t) && !/^\d{1,2}$/.test(t));
+    if (!dist.length) return null;
+    const hits = ftSearch(toks, { must: dist.slice(0, 2), minCov: 0.5 });
+    if (!hits.length) return null;
+    return ftAnswer(qn, { must: dist.slice(0, 2), minCov: 0.5 });
+  }
+  function vocab() {
+    if (FT.vocab) return FT.vocab;
+    const v = new Set();
+    FAQ.forEach(f => f.kw.split(' ').forEach(w => v.add(stemw(w))));
+    GLOSS.forEach(g => g.t.forEach(t => norm(t).split(' ').forEach(w => v.add(stemw(w)))));
+    'moratorium ordinance pending proposed rumored operating county city project data center capacity power total number biggest largest smallest oldest newest latest recent expire expiring ending soon source link size developer tenant utility tariff stage status zoning rule regulation restrict ban pause map color legend filter search share zoom update help question answer show list find tell about'.split(' ').forEach(w => v.add(stemw(w)));
+    FT.vocab = v; return v;
+  }
+
   // ----------------------------------------------------------- answer router
   function glossaryFor(qn) {
     const pre = /^(what('?s| is| are| does| do)?|define|meaning of|explain|what does .* (mean|stand for)|tell me about|who is|who are)\b/.test(qn) || /\b(mean|means|meaning|stand for|definition|define)\b/.test(qn);
@@ -902,6 +1031,7 @@
     // How-the-map-works questions (checked before data, unless a specific place or project is named)
     const ents = findEntities(q);
     const hasNamed = ents.projects.length || ents.counties.length || ents.cities.length || ents.devs.length;
+    { if (qn.split(' ').length <= 4) { const dh = distinctiveHook(qn, hasNamed); if (dh) return dh; } }
     { const mi = metaIntents(qn); if (mi && !(hasNamed && !/^(help|what can i ask)/.test(qn) && !/\b(are you|do you|can you|you are|is this)\b/.test(qn))) return mi; }
     const uiWords = /\b(gray|grey|blank|uncolou?red|add (a )?(new )?(project|rule|moratorium|data center)|submit|legend|colou?rs?|squares?|stripes?|dots?|pins?|dashed|filters?|buttons?|toggle\w*|pills?|zoom\w*|layers?|transmission lines?|gas pipelines?|copy link|share|sharing|search bar|search box|mobile|phone|print|download|export|forms?|report (a )?problem|add (new )?information|help page|data last updated|how often|last updated|where does (the )?data|data source|what does .* (mean|show)|how do i|how can i|how to|check=1|accessib\w+|keyboard)\b/;
     if (/\bdifference between (a )?(moratori\w+) and (an? )?ordinance|moratori\w+ (vs|versus) ordinance|ordinance (vs|versus) moratori\w+/.test(qn)) return R(P('A **moratorium** is a temporary pause, usually for a set time while a local government writes rules. An **ordinance** is a permanent rule, such as zoning standards a data center must meet. Many places pass a moratorium first, then replace it with an ordinance.') + P('On the map, moratoria are blue and ordinances are teal.'), ['Which moratoria end soon?', 'Show me the ordinances']);
@@ -984,7 +1114,7 @@
     }
     // Free-text retrieval over every record
     const off = linksFor(qn, 4);
-    const s = off.length ? null : answerSearch(qn);
+    const s = off.length ? null : (ftAnswer(qn) || answerSearch(qn));
     if (s) return s;
     // Not on the map
     if (off.length) return R(P('That is not something the map tracks. It covers where projects are proposed or operating and which counties and cities have local rules. These sources cover ' + (OFFMAP.find(o => o.re.test(qn)) || { label: 'it' }).label + ':') + linkBlock(off, 'Outside sources'), ['What’s the big picture?', 'How do I read the colors?']);
@@ -1055,6 +1185,7 @@
       const c = e.target.closest('.ask-chip'); if (c) ask(c.dataset.q);
     });
     greet();
+    loadHelp();
   }
   function msg(kind, html) {
     const d = document.createElement('div'); d.className = 'ask-msg ' + kind;
