@@ -1318,6 +1318,7 @@
       const r = routeCore(fixed);
       if (r && !NOT_FOUND.test(r.html)) { r.html = '<p class="ask-note"><em>Showing results for “' + esc(fixed) + '”.</em></p>' + r.html; return r; }
     }
+    if (fixed) { const g = glossaryFor(norm(fixed)); if (g) { const r = answerGloss(g); r.html = '<p class="ask-note"><em>Showing results for \u201c' + esc(fixed) + '\u201d.</em></p>' + r.html; return r; } }
     return routeCore(qRaw);
   }
 
