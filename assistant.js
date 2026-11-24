@@ -635,7 +635,7 @@
     const place = ents.counties[0] ? { county: ents.counties[0] } : (ents.cities[0] && ents.cities[0].county ? { county: ents.cities[0].county.NAME || ents.cities[0].county, city: ents.cities[0].key } : null);
     if (place && regWords && !/\b(ending|expir\w*|this year|next year|over|under|more than|less than)\b/.test(qn)) return answerRegStatus(place);
     // Structured list questions ("proposed projects near Louisville", "moratoria ending this year")
-    let nl = null; try { nl = answerQuestion(q, true); } catch (e) { nl = null; }
+    let nl = null; try { nl = answerQuestion(q.toLowerCase(), true); } catch (e) { nl = null; }
     if (nl && nl.items.length) {
       const rows = nl.items.slice(0, 8).map(o => o.kind === 'reg' ? '**' + describeReg(o.r) + '**' : '**' + o.p.name + '** (' + o.p.county + ' Co., ' + o.p.stage + (o.mw != null ? ', ' + fmtMW(o.mw) : '') + (o.dist != null ? ', ' + Math.round(o.dist) + ' mi' : '') + ')');
       return R(P(nl.summary.charAt(0).toUpperCase() + nl.summary.slice(1) + (nl.items.length > 8 ? ' (showing 8)' : '') + ':') + UL(rows) + (nl.note ? '<p class="ask-note">' + esc(nl.note) + '</p>' : '') + '<div class="ask-actions">' + mapBtn(nl.items, nl.title) + '</div>', nl.items[0].kind === 'proj' ? ['Tell me about ' + nl.items[0].p.name] : ['Which moratoria end soon?']);
