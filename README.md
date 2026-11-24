@@ -190,6 +190,17 @@ Also handles:
   extended). It does not open the links, so a dead link can still slip through. A short count also
   appears in the browser console.
 
+## Ask the map (chat helper)
+
+`assistant.js` adds a gold "Ask the map" button in the lower left. It is a built-in, rule-based helper, not a language model. It runs in the page, reads the same `projects` and `regulations` the map draws, makes no network calls and stores nothing.
+
+- **What it answers:** projects, counties, cities, developers, power suppliers and tenants; rules in a place (including recently expired moratoria); comparisons; gaps (proposed projects in counties with no rule); conflicts (proposed projects in counties with a moratorium); totals and rankings; plain-English list questions (shared with the search box); how the map works; and short definitions (moratorium, TSR, EKPC and so on).
+- **Show on map:** answers include buttons that select the project or county, or draw all matches.
+- **Beyond the map:** for topics the map does not track (rates, water, taxes, law, news) it offers a short list of outside links. Those links live in the `RES` list near the top of `assistant.js`; edit them there. Topic matching is the `OFFMAP` list.
+- **How-to answers:** the `FAQ` and `GLOSS` lists in `assistant.js`. If the map's behavior changes, update them and `help.html`.
+- **Known limits:** it matches names and patterns, so unusual wording can miss. Developer names are matched as written in the Sheet. It cannot answer questions the data cannot. Test in the browser console with `askTheMap.route("your question")`.
+- If the script fails to load, the rest of the map is unaffected.
+
 ## Shareable views and county summary
 The Regulation filter is multi-select (`regFilters`, a Set; empty means All; `reg=ordinance,pending` in the URL). Clicking All while it is active sets `regOff` (every regulation faded, no city markers, `reg=none`).
 `viewToHash()` / `applyHash()` keep the filters (reg, stage, proj, tx, gas), selected county and map
