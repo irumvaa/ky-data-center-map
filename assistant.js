@@ -798,14 +798,13 @@
   function css() {
     const s = document.createElement('style');
     s.textContent = `
-#ask-btn{position:fixed;left:12px;bottom:48px;z-index:1250;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:24px;border:2px solid #161616;background:#D4A017;color:#161616;font:700 14px/1 system-ui,-apple-system,Segoe UI,sans-serif;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+#ask-btn{position:fixed;right:12px;bottom:6px;z-index:1250;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:24px;border:2px solid #161616;background:#D4A017;color:#161616;font:700 14px/1 system-ui,-apple-system,Segoe UI,sans-serif;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.25)}
 #ask-btn:hover{background:#e3b22c}#ask-btn:focus-visible,.ask-act:focus-visible,.ask-chip:focus-visible,#ask-close:focus-visible{outline:3px solid #161616;outline-offset:2px}
 #ask-btn svg{width:18px;height:18px;flex:none}
-@media(min-width:1000px){#ask-btn{left:304px}}
-#ask-panel{position:fixed;left:8px;right:8px;bottom:96px;z-index:1260;max-height:min(66vh,600px);display:none;flex-direction:column;background:#fff;color:#161616;border:2px solid #161616;border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.35);font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;overflow:hidden}
+#ask-panel{position:fixed;left:8px;right:8px;bottom:54px;z-index:1260;max-height:min(66vh,600px);display:none;flex-direction:column;background:#fff;color:#161616;border:2px solid #161616;border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.35);font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;overflow:hidden}
 #ask-panel.open{display:flex}
-@media(min-width:600px){#ask-panel{right:auto;width:410px}}
-@media(min-width:1000px){#ask-panel{left:304px;bottom:96px;max-height:min(62vh,560px)}}
+@media(min-width:600px){#ask-panel{left:auto;right:12px;width:410px}}
+@media(min-width:1000px){#ask-panel{bottom:54px;max-height:min(62vh,560px)}}
 .ask-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:10px 12px;background:#4a4a4a;color:#fff}
 .ask-head strong{font-size:15px}.ask-head span{display:block;font-size:12px;opacity:.9;font-weight:400}
 #ask-close{background:none;border:0;color:#fff;font-size:18px;line-height:1;cursor:pointer;padding:4px 6px;border-radius:6px}
