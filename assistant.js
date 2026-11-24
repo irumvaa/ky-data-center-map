@@ -283,6 +283,16 @@
     { t: ['annexation', 'annex'], a: 'Annexation is when a city takes in land from the surrounding county. It matters here because a city’s land can fall outside county zoning, so a county moratorium may not cover it.' },
     { t: ['rezoning', 'rezone'], a: 'Rezoning changes what a piece of land may be used for, for example from agricultural to industrial. It is often the first public vote a data center project faces.' },
     { t: ['countywide', 'county wide', 'city level'], a: 'County-wide means a rule applies across the unincorporated county. City-level means it applies only inside one city. The map shows county rules as shading and city rules as small squares.' },
+    { t: ['hifld'], a: 'HIFLD (Homeland Infrastructure Foundation-Level Data) is the federal dataset the map uses for the transmission lines layer. The map\u2019s copy is from about 2025, and about half of the lines have no voltage listed at the source.' },
+    { t: ['transmission line', 'transmission lines', 'transmission'], a: 'Transmission lines are the high-voltage power lines that carry electricity across long distances. Large data centers usually need to connect to them or to a nearby substation. You can turn the layer on with the Transmission lines button.' },
+    { t: ['gas pipeline', 'gas pipelines', 'pipeline', 'pipelines'], a: 'Natural gas pipelines matter because some data centers plan on-site gas power. The map\u2019s pipeline layer is a January 2020 snapshot, so treat it as historical.' },
+    { t: ['voltage', 'kv', 'kilovolt'], a: 'Voltage measures how much electrical pressure a line carries. Transmission lines are usually 69 kV or higher. Larger data centers often need 138 kV or more.' },
+    { t: ['substation', 'substations'], a: 'A substation steps electricity up or down between the transmission grid and local lines. Big data centers often need their own or a new one.' },
+    { t: ['load', 'large load', 'large-load'], a: 'Load is how much electricity a customer uses. A large-load customer, such as a data center, can use as much as a small city, which is why utilities treat them under special tariffs.' },
+    { t: ['city rules only', 'amber'], a: 'Amber (\u201cCity rules only\u201d) means a city inside the county has a rule but the county itself does not. Those rules show as small squares.' },
+    { t: ['datacentermap', 'datacentermap com'], a: 'datacentermap.com is a public directory of commercial data centers. The map uses it for existing hosting and colocation facilities, which are marked confirmed, likely or unverified.' },
+    { t: ['p z', 'pz', 'planning and zoning', 'zoning'], a: 'Planning and zoning (P&Z) is the local process that decides what land can be used for. For a data center, the key steps are usually a rezoning vote and a planning commission review.' },
+    { t: ['ratepayer', 'ratepayers'], a: 'Ratepayers are the customers who pay a utility\u2019s rates. A common concern is whether the cost of power for a large data center ends up on other customers\u2019 bills.' },
     { t: ['karst'], a: 'Karst is landscape with limestone caves and sinkholes. It is a concern for large construction, for example near Mammoth Cave in the Cave City area.' }
   ];
 
@@ -943,7 +953,7 @@
     return d;
   }
   function greet() {
-    const m = msg('bot', P('Hi! I know everything on this map: the projects, the local rules, and how the map works. Ask me anything, or try one of these.') + chipRow(['What’s the big picture?', 'Which moratoria end soon?', 'Which proposed projects are in counties with a moratorium?', 'How do I read the colors?']));
+    const m = msg('bot', P('Hi! I know everything on this map: the projects, the local rules, and how the map works. You can also ask me about any term used on the map, like moratorium, TSR, tariff or hyperscale. Ask me anything, or try one of these.') + chipRow(['What’s the big picture?', 'Which moratoria end soon?', 'What does TSR mean?', 'How do I read the colors?']));
     return m;
   }
   function ask(q) {
