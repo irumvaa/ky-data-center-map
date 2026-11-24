@@ -856,6 +856,7 @@
       const c = e.target.closest('.ask-chip'); if (c) ask(c.dataset.q);
     });
     greet();
+    placeBtn(); window.addEventListener('resize', placeBtn); window.addEventListener('scroll', placeBtn, { passive: true }); setTimeout(placeBtn, 600); setTimeout(placeBtn, 2000);
   }
   function msg(kind, html) {
     const d = document.createElement('div'); d.className = 'ask-msg ' + kind;
@@ -876,6 +877,18 @@
     state.ctx = r.ctx || state.ctx;
     const m = msg('bot', r.html + chipRow(r.chips));
     log.scrollTop = Math.max(0, m.offsetTop - 8);
+  }
+  // Sit just above the map's Leaflet / OpenStreetMap credit line, at the map's bottom-right corner.
+  function placeBtn() {
+    try {
+      const m = document.getElementById('map'); if (!m || !btnEl) return;
+      const r = m.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
+      const right = Math.max(8, vw - Math.min(r.right, vw) + 8);
+      const bottom = Math.max(28, vh - Math.min(r.bottom, vh) + 28);
+      btnEl.style.right = right + 'px'; btnEl.style.bottom = bottom + 'px';
+      panel.style.bottom = (bottom + 48) + 'px';
+      if (vw >= 600) panel.style.right = right + 'px'; else panel.style.right = '8px';
+    } catch (e) {}
   }
   function openPanel() { if (state.open) { input.focus(); return; } state.open = true; lastFocus = document.activeElement; panel.classList.add('open'); btnEl.setAttribute('aria-expanded', 'true'); setTimeout(() => input.focus(), 0); }
   function closePanel(keepFocus) { if (!state.open) return; state.open = false; panel.classList.remove('open'); btnEl.setAttribute('aria-expanded', 'false'); if (!keepFocus) btnEl.focus(); }
