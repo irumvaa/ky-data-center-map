@@ -553,6 +553,127 @@
     return R(P('Here is what on the map matches “' + hits[0].hits.join(' ') + '”:') + UL(rows) + '<div class="ask-actions">' + mapBtn(items, 'Search matches') + '</div>', hits[0].kind === 'proj' ? ['Tell me about ' + projects[hits[0].i].name] : []);
   }
 
+
+  // ------------------------------------------------- broader reasoning handlers
+  const REGIONS = [
+    { key: 'eastern', label: 'Eastern Kentucky', f: lng => lng > -84.3 },
+    { key: 'central', label: 'Central Kentucky', f: lng => lng <= -84.3 && lng > -86.2 },
+    { key: 'western', label: 'Western Kentucky', f: lng => lng <= -86.2 }
+  ];
+  const regionOf = lng => (REGIONS.find(r => r.f(lng)) || REGIONS[1]);
+  function parseMDY(s) {
+    const m = String(s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if (!m) return null;
+    let y = +m[3]; if (y < 100) y += 2000; return new Date(y, +m[1] - 1, +m[2]);
+  }
+  function regionStats() {
+    return REGIONS.map(R0 => {
+      const pr = projects.map((p, i) => ({ p, i })).filter(o => isFinite(o.p.lng) && regionOf(o.p.lng) === R0);
+      const rg = regulations.map((r, i) => ({ r, i })).filter(o => isFinite(o.r.lng) && regionOf(o.r.lng) === R0);
+      const np = pr.filter(o => o.p.stage !== 'Operating' && !o.p._facility);
+      return { R: R0, pr, rg, np, mor: rg.filter(o => norm(o.r.type) === 'moratorium'), ms: mwSum(np.map(o => o.p)) };
+    });
+  }
+  function answerRegions(only) {
+    const st = regionStats().filter(x => !only || x.R.key === only);
+    const lines = st.map(x => '**' + x.R.label + ':** ' + plural(x.np.length, 'proposed or rumored project') + (x.ms.counted ? ' (about ' + fmtMW(x.ms.total) + ' where sizes are given)' : '') + ', ' + plural(x.pr.length - x.np.length, 'operating site') + ', ' + plural(x.mor.length, 'active moratorium', 'active moratoria') + ' and ' + plural(x.rg.length - x.mor.length, 'other rule') + '.');
+    const busiest = st.slice().sort((a, b) => b.np.length - a.np.length)[0];
+    const items = [].concat(...st.map(x => x.np.map(o => projItem(o.i))));
+    return R(P(only ? 'Here is ' + st[0].R.label + ' on the map:' : 'Regions are rough bands by longitude (east of about Lexington, central, and west of about Elizabethtown). Here is how they compare:') + UL(lines) + (only ? '' : P('Most proposed activity is in ' + busiest.R.label + ' (' + busiest.np.length + ' projects).')) + '<div class="ask-actions">' + mapBtn(items, only ? st[0].R.label + ' projects' : 'Proposed and rumored projects') + '</div>', ['Which proposed projects are in counties with a moratorium?', 'What’s the big picture?']);
+  }
+  function answerRestrictive() {
+    const rows = allCounties.map(c => {
+      const regs = regsFor(c).map(o => o.r); if (!regs.length) return null;
+      const county = regs.filter(isCountyLevel);
+      let score = 0, why = [];
+      county.forEach(r => { score += 3; if (norm(r.type) === 'ordinance') { score += 2; why.push('permanent ordinance'); } else if (daysUntilExpiry(r) === null) { score += 2; why.push('no end date'); } else if (daysUntilExpiry(r) > 180) { score += 1; why.push('ends ' + r.expiration); } else why.push('ends ' + r.expiration); });
+      regs.filter(r => !isCountyLevel(r)).forEach(r => { score += 1; why.push('city rule in ' + r.city); });
+      return { c, score, why };
+    }).filter(Boolean).sort((a, b) => b.score - a.score).slice(0, 6);
+    return R(P('"Restrictive" is not something the map scores, so this is my reading of the data: a county-wide rule counts most, a permanent ordinance or a moratorium with no end date counts more, and a city-only rule counts least. Strongest first:') + UL(rows.map(o => '**' + o.c + ' County:** ' + o.why.join(', '))) + P('This ranks the rules on file, not how strictly each is enforced. Read the source for each before relying on it.') + '<div class="ask-actions">' + mapBtn([].concat(...rows.map(o => regsFor(o.c).map(x => regItem(x.i)))), 'Strongest local rules') + '</div>', ['Which moratoria end soon?', 'Which counties have no regulation but a proposed project?']);
+  }
+  function answerLandscape(qn) {
+    const regsM = regulations.filter(r => norm(r.type) === 'moratorium');
+    const dated = regsM.map(r => ({ r, d: parseMDY(r.startDate) })).filter(o => o.d);
+    const now = new Date(); const ago = n => new Date(now.getFullYear(), now.getMonth() - n, now.getDate());
+    const last6 = dated.filter(o => o.d >= ago(6)).length, last3 = dated.filter(o => o.d >= ago(3)).length;
+    const np = projects.filter(p => p.stage !== 'Operating' && !p._facility), mm = mwSum(np);
+    const prot = new Set(regulations.map(r => norm(r.county)));
+    const withProjNoRule = gapCounties().length, withProjAll = new Set(np.map(p => norm(p.county))).size;
+    const lines = [
+      '**Local pushback is real and growing:** ' + regsM.length + ' active moratoria' + (dated.length ? ', ' + last6 + ' started in the last 6 months' + (last3 ? ' (' + last3 + ' in the last 3)' : '') : '') + '. The map holds ' + prot.size + ' counties with some rule.',
+      '**Development interest is large:** ' + plural(np.length, 'proposed or rumored project') + ' in ' + plural(withProjAll, 'county', 'counties') + (mm.counted ? ', about ' + fmtMW(mm.total) + ' where sizes are given' : '') + '.',
+      '**The two overlap:** ' + plural(conflicts().length, 'project') + ' sit in places with a moratorium, and ' + plural(withProjNoRule, 'county', 'counties') + ' with a proposed project have no rule on file.',
+      '**Most moratoria are temporary:** ' + plural(regulations.filter(isExpiringSoon).length, 'moratorium', 'moratoria') + ' end within 60 days, so many places will soon have to extend or replace them with permanent rules.'
+    ];
+    const q = /\b(good|bad|friendly|welcome|welcoming|worth|safe|attractive|competitive|pro|anti)\b/.test(qn);
+    return R((q ? P('The map cannot say whether Kentucky is a good or bad place for data centers. That depends on who is asking. It can show what is happening:') : P('Here is where Kentucky stands, from the data on the map:')) + UL(lines) + P('This is a snapshot of tracked public information, not a complete count. Dates and sizes come from news and filings, so check the sources.') + linkBlock([resById('epic'), resById('tracker')], 'For the wider policy picture'), ['Which proposed projects are in counties with a moratorium?', 'Which regions are most active?', 'Which moratoria end soon?']);
+  }
+  function answerRecent() {
+    const regs = regulations.map((r, i) => ({ r, i, d: parseMDY(r.startDate) })).filter(o => o.d).sort((a, b) => b.d - a.d).slice(0, 5);
+    if (!regs.length) return null;
+    return R(P('Projects on the map have no date for when they were added, so I can only sort the rules by start date. Most recent first:') + UL(regs.map(o => '**' + describeReg(o.r).split(',')[0] + '** started ' + o.r.startDate)) + P('The footer shows when the whole map was last updated.') + '<div class="ask-actions">' + mapBtn(regs.map(o => regItem(o.i)), 'Newest rules') + '</div>' + linkBlock(linksFor('latest news'), 'For the latest news'), ['Which moratoria end soon?']);
+  }
+  function answerRisks() {
+    const g = gapCounties(), c = conflicts(), soon = regulations.filter(isExpiringSoon);
+    const lines = [];
+    if (c.length) lines.push(plural(c.length, 'proposed project') + ' sit in places with a moratorium, so each may face a legal or timing question.');
+    if (g.length) lines.push(plural(g.length, 'county', 'counties') + ' have a proposed project and no rule on file, so a project could move before the county writes rules.');
+    if (soon.length) lines.push(plural(soon.length, 'moratorium', 'moratoria') + ' end within 60 days (' + soon.slice(0, 3).map(r => r.county).join(', ') + '), which opens a window before permanent rules.');
+    const big = projects.filter(p => p.stage !== 'Operating' && mw(p) >= 1000).length; if (big) lines.push(plural(big, 'project') + ' state 1 GW or more, a size that tends to need new power supply and major grid work.');
+    return R(P('The map holds facts, not forecasts or advice, so I can only point to what in the data deserves attention:') + UL(lines) + P('For costs to ratepayers, water, noise and incentives, the map has no data. These sources cover them:') + linkBlock([resById('epic'), resById('mta'), resById('eec'), resById('psc')], 'Outside sources'), ['Which proposed projects are in counties with a moratorium?', 'Which counties have no regulation but a proposed project?']);
+  }
+  function answerAdvice() {
+    return R(P('I can’t tell a county what to decide, but the map shows what others have done and where the gaps are.') + UL(['Ask which places already have rules: **Which counties have a moratorium?**', 'See what nearby counties did: ask **Is there a moratorium in [county]?**', 'Check whether projects are already planned where there is no rule: **Which counties have no regulation but a proposed project?**']) + P('Mountain Association’s resource page and the Kentucky League of Cities cover how local governments have responded, and you can email the Energy Team directly.') + linkBlock([resById('mta'), resById('klc'), resById('epic'), resById('contact')], 'Where to start'), ['Which counties have a moratorium?', 'Which counties have no regulation but a proposed project?']);
+  }
+  function answerConfidence(qn) {
+    const nolink = projects.map((p, i) => ({ p, i })).filter(o => !(o.p.links || []).filter(safeUrl).length);
+    const unver = projects.map((p, i) => ({ p, i })).filter(o => o.p._facility && o.p.verification === 'unverified');
+    const noreg = regulations.map((r, i) => ({ r, i })).filter(o => !(o.r.links || []).filter(safeUrl).length);
+    const nodev = projects.filter(p => p.stage !== 'Operating' && unknownVal(p.developer)).length, notenant = projects.filter(p => p.stage !== 'Operating' && unknownVal(p.tenant)).length;
+    const lines = [plural(nolink.length, 'project') + ' and ' + plural(noreg.length, 'rule') + ' have no working source link on the map.', unver.length ? plural(unver.length, 'commercial facility', 'commercial facilities') + ' are unverified (only listed on datacentermap.com).' : null, nodev + ' proposed or rumored projects have no named developer, and ' + notenant + ' have no named tenant.'].filter(Boolean);
+    return R(P('How solid the data is:') + UL(lines) + P('Staff review every entry, and the Report a problem form feeds corrections back in.') + '<div class="ask-actions">' + (nolink.length ? mapBtn(nolink.map(o => projItem(o.i)), 'Projects with no source link') : '') + '</div>', ['How many unverified facilities are there?', 'How do I report a problem?']);
+  }
+  function answerStatusWords(qn) {
+    const rx = /approv|rejected|denied|withdrawn|tabled|postponed|passed|rezon/;
+    const hits = projects.map((p, i) => ({ p, i })).filter(o => rx.test(String(o.p.pz).toLowerCase()) && !unknownVal(o.p.pz));
+    const want = /\b(approved|approval)\b/.test(qn) ? /approv|passed|rezon\w+ (approved|passed)/ : /\b(rejected|denied|withdrawn|turned down|voted down)\b/.test(qn) ? /reject|denied|withdrawn|voted down|tabled/ : rx;
+    const sel = hits.filter(o => want.test(String(o.p.pz).toLowerCase()));
+    if (!sel.length) return R(P('No project on the map has a planning and zoning note that matches that.'), ['What’s the big picture?']);
+    return R(P('Planning and zoning notes on the map that match:') + UL(sel.slice(0, 8).map(o => '**' + o.p.name + '** (' + o.p.county + ' Co.): ' + clip(o.p.pz, 150))) + P('These are summaries from the Sheet. Check the sources for the exact vote.') + '<div class="ask-actions">' + mapBtn(sel.map(o => projItem(o.i)), 'Matching projects') + '</div>', []);
+  }
+  function answerCountsAbout(qn) {
+    const withRule = new Set(regulations.map(r => norm(r.county))).size, n = allCounties.length;
+    const mors = new Set(regulations.filter(r => norm(r.type) === 'moratorium').map(r => norm(r.county))).size;
+    const cityRegs = regulations.filter(r => !isCountyLevel(r));
+    const cm = /\bcit(y|ies)\b/.test(qn);
+    if (cm) return R(P(plural(cityRegs.length, 'city-level rule') + ' on the map:') + UL(cityRegs.map(r => describeReg(r))) + '<div class="ask-actions">' + mapBtn(cityRegs.map(r => regItem(regulations.indexOf(r))), 'City-level rules') + '</div>', ['Which counties have a moratorium?']);
+    const list = regulations.filter(r => norm(r.type) === 'moratorium' && isCountyLevel(r));
+    return R(P(withRule + ' of ' + n + ' counties (' + Math.round(withRule / n * 100) + '%) have some local rule on file, and ' + mors + ' have a moratorium (county or city). The other ' + (n - withRule) + ' show nothing tracked, which is not proof that nothing exists.') + UL(list.map(r => '**' + r.county + ' County:** ' + (r.expiration ? 'ends ' + r.expiration : 'no end date'))) + '<div class="ask-actions">' + mapBtn(regulations.filter(r => norm(r.type) === 'moratorium').map(r => regItem(regulations.indexOf(r))), 'All moratoria') + '</div>', ['Which moratoria end soon?', 'Which cities have a moratorium?']);
+  }
+  function answerNearMe() {
+    return R(P('I do not use your location, and nothing leaves your device. Type a city or county and I will show what is near it, for example **proposed projects near Louisville** or **within 30 miles of Lexington**.'), ['Proposed projects near Louisville', 'Projects within 30 miles of Lexington']);
+  }
+  function smartIntents(qn, hasNamed) {
+    if (/\b(near me|my area|my town|close to me|where i live|my location)\b/.test(qn)) return answerNearMe();
+    if (/\b(how (does|do|is|are) (kentucky|ky|the state) compare|compared to (other states|virginia|ohio|tennessee|indiana|texas)|other states|national(ly)?)\b/.test(qn)) return R(P('The map covers Kentucky only, so I can’t compare it with other states.') + linkBlock([resById('epic'), resById('eia'), resById('dcmap')], 'These cover the wider picture'), ['What’s the big picture?']);
+    if (!hasNamed) {
+      if (/\b(most restrictive|strictest|toughest|strongest rules?|tightest|most strict|least friendly|hardest)\b/.test(qn)) return answerRestrictive();
+      if (/\b(regions?|parts of (the state|kentucky)|areas of (the state|kentucky)|where (is|are) .*(most|busiest|active|concentrated)|most active|hotspots?|concentrat\w+)\b/.test(qn)) return answerRegions();
+      const rg = qn.match(/\b(eastern|east|central|western|west)\b(?: kentucky| ky)?\b/); if (rg && /\b(kentucky|ky|region|part|happening|going on|activity)\b/.test(qn) && !/\b(proposed|operating|rumou?red|moratori\w+|ordinances?)\b/.test(qn)) return answerRegions(/^east/.test(rg[1]) ? 'eastern' : /^west/.test(rg[1]) ? 'western' : 'central');
+      if (/\b(good|bad|friendly|welcoming|trend|direction|momentum|going well|doing|healthy|growing|slowing|heating up|picture)\b/.test(qn) && /\b(kentucky|ky|state|data cent\w+|moratori\w+|statewide)\b/.test(qn)) return answerLandscape(qn);
+      if (/\b(banning|banned|pushback|opposition|resistance|backlash|fighting|against|restrict\w*|cracking down)\b/.test(qn) && /\b(counties|county|cities|local|places|kentucky|data cent\w+)\b/.test(qn)) return answerCountsAbout(qn);
+      if (/\b(risks?|concerns?|problems?|watch (out|for)|red flags?|worry|worries|issues?)\b/.test(qn) && /\b(biggest|main|top|key|most|any|kentucky|data cent\w+|the map)\b/.test(qn)) return answerRisks();
+      if (/\b(should (a |my |the |our )?(county|city|town|community|government|fiscal court|council)|how (do|can) (i|we|a county|a city|my county|my community) (protect|prepare|respond|handle|stop|regulate|get ready)|what (can|should) (a |my |our )?(county|city|community)|protect my (county|town|community|city))\b/.test(qn)) return answerAdvice();
+      if (/\b(newest|latest|recent(ly)?|just (added|passed)|new (moratori\w+|rules?|ordinances?)|this (week|month)|happened lately|what('?s| is) new)\b/.test(qn)) { const a = answerRecent(); if (a) return a; }
+      if (/\b(confirmed|sourced|unsourced|no source|without (a )?source|reliable|trust|how (accurate|solid|reliable|complete)|data quality|complete)\b/.test(qn)) return answerConfidence(qn);
+      if (/\b(approved|rejected|denied|withdrawn|voted down|tabled|turned down|approval)\b/.test(qn) && /\b(projects?|rezoning|zoning|data cent\w+|any)\b/.test(qn)) return answerStatusWords(qn);
+      if (/\b(how many|what percent\w*|what share|number of)\b/.test(qn) && /\b(counties|cities)\b/.test(qn) && /\b(moratori\w+|rules?|regulat\w+|ban\w*|protect\w*|restrict\w*|ordinances?)\b/.test(qn)) return answerCountsAbout(qn);
+      if (/\b(which|what|list|show)\b.*\bcit(y|ies)\b.*\b(moratori\w+|rules?|ban|regulat\w+)\b/.test(qn)) return answerCountsAbout('cities');
+      if (/\b(which|what|list|show)\b.*\bcount(y|ies)\b.*\b(have|has|with)\b.*\b(moratori\w+)\b/.test(qn)) return answerCountsAbout('counties');
+    }
+    return null;
+  }
+
   // ----------------------------------------------------------- answer router
   function glossaryFor(qn) {
     const pre = /^(what('?s| is| are| does| do)?|define|meaning of|explain|what does .* (mean|stand for)|tell me about|who is|who are)\b/.test(qn) || /\b(mean|means|meaning|stand for|definition|define)\b/.test(qn);
@@ -599,6 +720,8 @@
       const f = /\b(what can you do|who are you|what are you|what do you know|are you (an )?(ai|bot|human)|help me)\b/.test(qn) ? FAQ.find(x => x.id === 'assistant') : (faq.f || FAQ.find(x => x.id === 'assistant'));
       if (f) return R(f.a().join('') + '<p><a href="' + HELP_PAGE + '">Open the full guide</a></p>', f.chips);
     }
+
+    { const si = smartIntents(qn, hasNamed); if (si) return si; }
 
     // Insights across the whole data set
     if (/\b(overview|summary|big picture|snapshot|at a glance|surprise me|something interesting|insights?|highlights?|what should i know|key (facts|takeaways)|state of|trends?|what('?s| is) going on)\b/.test(qn) && !hasNamed) return overview();
