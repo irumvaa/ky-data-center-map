@@ -31,7 +31,7 @@ function setupRegulationsTab(ss) {
   let sheet = ss.getSheetByName(REG_SHEET);
   if (sheet) ss.deleteSheet(sheet);
   sheet = ss.insertSheet(REG_SHEET);
-  const headers = ['County','City','Level','Type','StartDate','Period','Expiration','Notes','Lat','Lng','Address','Sources','Status','NotifiedExpired'];
+  const headers = ['County','City','Level','Type','StartDate','Period','Expiration','Notes','Lat','Lng','Address','Sources','Status','NotifiedExpired','NotifiedExpiringSoon'];
   sheet.appendRow(headers);
   const rows = [
     ["Fayette", "Lexington", "County", "Moratorium", '', "4 months, June 2026", "10/31/26", "Moratorium until Oct 31st, working on an ordinance, vote in Planning Commission July 30th 2026", 38.0406, -84.5037, '', "https://engage.lexingtonky.gov/datacenters", 'Published', false],

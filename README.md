@@ -319,9 +319,30 @@ things worth knowing if you're troubleshooting a deployment:
   key"** naming the exact bad ID in the error, useful for spotting a copy-paste slip (an extra
   or missing character) by comparing it directly against the Sheet's real URL.
 
+### Updating an existing Sheet and script (November 2026 changes)
+1. Replace `Code.gs` in the Apps Script editor with the repo copy (keep your real `SHEET_ID`), and
+   add `MergeFacilities.gs` as a new file. Save.
+2. Run these once from the function dropdown, in this order: `mergeFacilitiesIntoProjects`
+   (moves the 25 facilities into Projects, archives the old tab), `applyDateValidation`
+   (rejects a bad Expiration date when typed), `installDailyChecks` (daily emails for moratoria that
+   have expired and for those expiring within 60 days). Approve the permission prompt when it asks
+   (Drive access is for the "last updated" date; Gmail for the emails).
+3. Deploy > Manage deployments > edit the web app > New version.
+4. Reload the map: the footer should read "Data last updated <date>", and facility popups show
+   their verification wording. In the Sheet, the menu Data Center Map Admin > Check Expiration
+   dates lists any cell that is not a readable date.
+
+What the new code does: `buildMapData()` adds an `updated` date (the Sheet file's last edit, so any
+edit counts, including a new pending submission). `parseLooseDate_()` reads 7/7/27, 7/7/2027,
+2027-07-07 and "July 7, 2027" and ignores anything else, so one bad cell cannot break the expiry
+logic. `checkExpiringSoonMoratoria()` emails once per moratorium at 60 days (tracked in a
+`NotifiedExpiringSoon` column that is created on first run). `Category` and `Verification` columns on
+Projects mark commercial facilities and how well they are independently confirmed.
+
 The Apps Script's `doGet()` returns JSON shaped exactly like this for the main map data:
 ```json
 {
+  "updated": "Nov 24, 2026",
   "regulations": [ { "county": "...", "city": "...", "level": "County|City",
     "type": "Moratorium|Ordinance|Pending/Proposed", "startDate": "...", "period": "...",
     "expiration": "M/D/YY", "address": "...", "links": ["..."], "notes": "...",

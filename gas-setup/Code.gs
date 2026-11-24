@@ -40,7 +40,8 @@
  *      - onAddFormSubmit, event source "From spreadsheet", pick the ADD
  *        form's spreadsheet/sheet, event type "On form submit"
  *      - onReportFormSubmit, same but pointing at the REPORT form
- *      - checkExpiredMoratoria, time-driven, "Day timer", once a day
+ *      - checkExpiredMoratoria and checkExpiringSoonMoratoria, time-driven,
+ *        "Day timer", once a day (or just run installDailyChecks() once)
  *      - onOpen, event source "From spreadsheet", event type "On open"
  *        (only needed if step 1 wasn't done as container-bound; skip this
  *        if the admin menu already appears on its own when you open the
@@ -111,10 +112,26 @@ function buildHelpContent() {
 function buildMapData() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   return {
+    updated: lastUpdatedLabel_(),
     regulations: readPublishedRows(ss, REG_SHEET, rowToRegulation),
     projects: readPublishedRows(ss, PROJ_SHEET, rowToProject),
     otherDataCenters: readPublishedRows(ss, DC_SHEET, rowToDCFacility),
   };
+}
+
+/**
+ * "Nov 24, 2026": when the Sheet file was last edited. The map footer shows
+ * it as "Data last updated ...". Any edit counts, including a new pending
+ * submission or the daily NotifiedExpired flags, so it can run a little ahead
+ * of the last real data change. Needs Drive access; if that is not allowed
+ * yet this returns '' and the map falls back to its own wording.
+ */
+function lastUpdatedLabel_() {
+  try {
+    return Utilities.formatDate(DriveApp.getFileById(SHEET_ID).getLastUpdated(), 'America/New_York', 'MMM d, yyyy');
+  } catch (err) {
+    return '';
+  }
 }
 
 function readPublishedRows(ss, sheetName, mapFn) {
@@ -211,10 +228,37 @@ function splitSources(raw) {
 
 function formatDateField(val) {
   if (!val) return '';
-  if (val instanceof Date) {
-    return Utilities.formatDate(val, 'America/New_York', 'M/d/yy'); // matches the map's existing convention
+  const d = parseLooseDate_(val);
+  if (d) return Utilities.formatDate(d, 'America/New_York', 'M/d/yy'); // matches the map's existing convention
+  return String(val); // free text such as "Q2 2027" is passed through unchanged
+}
+
+/**
+ * Turns a cell value into a Date, or null if it is not clearly a date.
+ * Accepts a real date cell, 7/7/27, 7/7/2027, 2027-07-07 and "July 7, 2027".
+ * Anything else (blank, "TBD", "pending") returns null, so one typo in a
+ * cell cannot stop the expiry logic from working for every other row.
+ */
+function parseLooseDate_(val) {
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  const s = String(val || '').trim();
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (m) {
+    const y = m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10);
+    return validDate_(y, parseInt(m[1], 10), parseInt(m[2], 10));
   }
-  return String(val);
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return validDate_(parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10));
+  if (/^[A-Za-z]{3,9}\.? \d{1,2},? \d{4}$/.test(s)) {
+    const t = new Date(s + ' 12:00:00');
+    return isNaN(t.getTime()) ? null : t;
+  }
+  return null;
+}
+
+function validDate_(y, mo, day) {
+  const d = new Date(y, mo - 1, day, 12, 0, 0);
+  return (d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day) ? d : null;
 }
 
 // ==========================================================================
@@ -386,6 +430,8 @@ function onOpen(e) {
     .createMenu('Data Center Map Admin')
     .addItem('Review next pending item', 'reviewNextPendingItem')
     .addItem('List all pending items (log only)', 'listPendingItems')
+    .addSeparator()
+    .addItem('Check Expiration dates', 'checkExpirationDates')
     .addToUi();
 }
 
@@ -455,7 +501,7 @@ function summarizeRowForReview(sheetName, headers, row) {
   // Show every non-empty field except Status/NotifiedExpired/Lat/Lng, so the
   // reviewer sees the actual submitted content without wading through
   // coordinates or bookkeeping columns.
-  const skip = ['Status', 'NotifiedExpired', 'Lat', 'Lng'];
+  const skip = ['Status', 'NotifiedExpired', 'NotifiedExpiringSoon', 'Lat', 'Lng', 'Category', 'Verification'];
   const lines = [];
   headers.forEach((h, i) => {
     if (skip.indexOf(h) !== -1) return;
@@ -510,7 +556,7 @@ function checkExpiredMoratoria() {
   const typeCol = headers.indexOf('Type');
   const countyCol = headers.indexOf('County');
   const statusCol = headers.indexOf('Status');
-  const notifiedCol = headers.indexOf('NotifiedExpired');
+  const notifiedCol = ensureColumn_(sheet, headers, 'NotifiedExpired');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -519,8 +565,8 @@ function checkExpiredMoratoria() {
     if (row[typeCol] !== 'Moratorium') continue;
     if (row[statusCol] !== STATUS_PUBLISHED) continue;
     if (row[notifiedCol] === true || row[notifiedCol] === 'TRUE') continue;
-    const exp = row[expCol];
-    if (!(exp instanceof Date)) continue;
+    const exp = parseLooseDate_(row[expCol]);
+    if (!exp) continue;
     if (exp < today) {
       MailApp.sendEmail({
         to: NOTIFY_EMAIL,
@@ -531,6 +577,113 @@ function checkExpiredMoratoria() {
       sheet.getRange(i + 1, notifiedCol + 1).setValue(true);
     }
   }
+}
+
+/**
+ * Early warning: emails once for each published moratorium whose expiration
+ * is within EXPIRING_SOON_DAYS (60, the same window as the map's
+ * "Expiring soon" filter), so there is time to check whether it is being
+ * extended before the map drops it. Tracked in a "NotifiedExpiringSoon"
+ * column (created on first run) so each one is emailed once. Set the daily
+ * trigger with installDailyChecks().
+ */
+const EXPIRING_SOON_DAYS = 60;
+function checkExpiringSoonMoratoria() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(REG_SHEET);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0];
+  const expCol = headers.indexOf('Expiration');
+  const typeCol = headers.indexOf('Type');
+  const countyCol = headers.indexOf('County');
+  const cityCol = headers.indexOf('City');
+  const statusCol = headers.indexOf('Status');
+  const notifiedCol = ensureColumn_(sheet, headers, 'NotifiedExpiringSoon');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const lines = [];
+  const toMark = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (row[typeCol] !== 'Moratorium') continue;
+    if (row[statusCol] !== STATUS_PUBLISHED) continue;
+    if (row[notifiedCol] === true || row[notifiedCol] === 'TRUE') continue;
+    const exp = parseLooseDate_(row[expCol]);
+    if (!exp) continue;
+    const days = Math.round((exp - today) / 86400000);
+    if (days < 0 || days > EXPIRING_SOON_DAYS) continue;
+    const place = row[cityCol] ? row[cityCol] + ' (' + row[countyCol] + ' County)' : row[countyCol] + ' County';
+    lines.push(place + ': expires ' + Utilities.formatDate(exp, 'America/New_York', 'M/d/yyyy') + ' (' + days + ' days)');
+    toMark.push(i + 1);
+  }
+  if (!lines.length) return;
+  MailApp.sendEmail({
+    to: NOTIFY_EMAIL,
+    subject: 'KY Data Center Map, ' + lines.length + (lines.length > 1 ? ' moratoria' : ' moratorium') + ' expiring within ' + EXPIRING_SOON_DAYS + ' days',
+    body: 'These moratoria are close to ending. Check whether each is being extended, and update the Expiration date in the Sheet if so. ' +
+          'After the date the map drops them automatically (the row stays in the Sheet).\n\n' + lines.join('\n'),
+  });
+  toMark.forEach(r => sheet.getRange(r, notifiedCol + 1).setValue(true));
+}
+
+/** Returns the 0-based index of a header, adding it at the end of row 1 if it is missing. */
+function ensureColumn_(sheet, headers, name) {
+  let idx = headers.indexOf(name);
+  if (idx === -1) {
+    idx = headers.length;
+    sheet.getRange(1, idx + 1).setValue(name).setFontWeight('bold');
+    headers.push(name);
+  }
+  return idx;
+}
+
+/** Run once: sets up both daily email checks (skips any that already exist). */
+function installDailyChecks() {
+  const existing = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction());
+  ['checkExpiredMoratoria', 'checkExpiringSoonMoratoria'].forEach(fn => {
+    if (existing.indexOf(fn) === -1) {
+      ScriptApp.newTrigger(fn).timeBased().everyDays(1).atHour(8).create();
+    }
+  });
+}
+
+/**
+ * Adds a date check to the Regulations "Expiration" column, so a typo like
+ * "7/32/27" or "soon" is rejected when someone types it. Blank is fine
+ * (some moratoria have no end date). Run once, and again if the column moves.
+ */
+function applyDateValidation() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(REG_SHEET);
+  const col = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].indexOf('Expiration');
+  if (col === -1) throw new Error('No Expiration column in ' + REG_SHEET);
+  const rule = SpreadsheetApp.newDataValidation().requireDate()
+    .setAllowInvalid(false)
+    .setHelpText('Enter the end date, like 7/7/27. Leave blank if there is no end date.')
+    .build();
+  sheet.getRange(2, col + 1, Math.max(sheet.getMaxRows() - 1, 1), 1).setDataValidation(rule);
+}
+
+/**
+ * Admin menu report: lists Expiration cells that are not a readable date
+ * (existing typos the validation above cannot catch).
+ */
+function checkExpirationDates() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const values = ss.getSheetByName(REG_SHEET).getDataRange().getValues();
+  const headers = values[0];
+  const expCol = headers.indexOf('Expiration');
+  const bad = [];
+  for (let i = 1; i < values.length; i++) {
+    const v = values[i][expCol];
+    if (v !== '' && !parseLooseDate_(v)) {
+      bad.push('Row ' + (i + 1) + ' (' + values[i][headers.indexOf('County')] + '): "' + v + '"');
+    }
+  }
+  SpreadsheetApp.getUi().alert(bad.length
+    ? 'These Expiration cells are not a readable date, so the map ignores them:\n\n' + bad.join('\n')
+    : 'All Expiration cells are blank or valid dates.');
 }
 
 // ==========================================================================
