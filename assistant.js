@@ -602,6 +602,7 @@
 
     // Insights across the whole data set
     if (/\b(overview|summary|big picture|snapshot|at a glance|surprise me|something interesting|insights?|highlights?|what should i know|key (facts|takeaways)|state of|trends?|what('?s| is) going on)\b/.test(qn) && !hasNamed) return overview();
+    if (/\b(where does (kentucky|ky|the state)|(kentucky|ky) (stand|stands|standing|overall|landscape|situation)|stand(s|ing)? (in|on) (kentucky|ky)|statewide|across (the state|kentucky)|how is (kentucky|ky|the state)|how many data cent\w+ (are )?(in|does) (kentucky|ky)|state of data cent\w+)\b/.test(qn) && !ents.counties.length && !ents.cities.length) return overview();
     if (/\b(conflicts?|despite|even though|blocked|overlap\w*|affected by|in (a )?(counties|places|areas) (with|under) (a )?(moratori\w+|ban|pause))\b/.test(qn) || /\b(proposed|rumou?red|planned)\b.*\b(counties|places|areas)\b.*\b(with|under)\b.*\b(moratori\w+|ban|pause)/.test(qn) || /\bprojects?\b.*\b(inside|under|in) (a )?moratori\w+/.test(qn)) return answerConflicts();
     if (/\b(gaps?|unprotected|uncovered|not covered|no (regulation|rules?|moratorium|ordinance)\b.*\b(proposed|rumou?red|project)|\b(proposed|rumou?red|project)\b.*\bno (regulation|rules?|moratorium|ordinance|protection))/.test(qn) || /\bwithout (a |any )?(regulation|rules?|moratorium)/.test(qn)) return answerGaps();
     if (/\b(connect\w*|relationships?|patterns?|links? between|in common|shared|same (developer|utility|tenant)|multiple counties|more than one (county|project))\b/.test(qn) && !hasNamed) return answerConnections();
@@ -650,7 +651,7 @@
     if (/\b(what happens when|after (a )?moratorium|when (a )?moratorium (ends|expires))\b/.test(qn)) return R(P('When a moratorium ends, a county or city usually either lets it lapse, extends it, or replaces it with permanent rules (an ordinance). The map hides expired moratoria automatically but keeps them in the tracking sheet, and staff update the end date if one is extended.') + linkBlock(linksFor('news local'), 'To check for newer action'), ['Which moratoria end soon?']);
 
     // Follow-ups using the last topic ("who is the developer?", "show it on the map")
-    const pron = /\b(it|its|that|there|this one|that one|they|their|them|here)\b/.test(qn) || /^(who|when|how big|what size|where|show|sources?|tenant|developer|size|utility|nearby|more)\b/.test(qn);
+    const pron = /\b(it|its|that|there|this one|that one|they|their|them|here)\b/.test(qn) || (qn.split(' ').length <= 5 && /^(who|when|how big|what size|where|show|sources?|tenant|developer|size|utility|nearby|more)\b/.test(qn));
     if (pron && state.ctx) {
       const c = state.ctx;
       if (/\b(show|map|where|zoom|locate)\b/.test(qn)) { if (c.type === 'project') { closePanel(true); selectProject(c.i); return R(P('Showing it on the map.'), []); } if (c.type === 'county') { closePanel(true); selectCounty(c.county); return R(P('Showing ' + c.county + ' County on the map.'), []); } }
