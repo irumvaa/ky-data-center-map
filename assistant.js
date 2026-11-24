@@ -798,13 +798,13 @@
   function css() {
     const s = document.createElement('style');
     s.textContent = `
-#ask-btn{position:fixed;right:12px;bottom:6px;z-index:1250;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:24px;border:2px solid #161616;background:#D4A017;color:#161616;font:700 14px/1 system-ui,-apple-system,Segoe UI,sans-serif;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+#ask-btn{position:fixed;right:12px;bottom:3px;z-index:1250;display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:24px;border:2px solid #161616;background:#D4A017;color:#161616;font:700 14px/1 system-ui,-apple-system,Segoe UI,sans-serif;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.25)}
 #ask-btn:hover{background:#e3b22c}#ask-btn:focus-visible,.ask-act:focus-visible,.ask-chip:focus-visible,#ask-close:focus-visible{outline:3px solid #161616;outline-offset:2px}
 #ask-btn svg{width:18px;height:18px;flex:none}
-#ask-panel{position:fixed;left:8px;right:8px;bottom:54px;z-index:1260;max-height:min(66vh,600px);display:none;flex-direction:column;background:#fff;color:#161616;border:2px solid #161616;border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.35);font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;overflow:hidden}
+#ask-panel{position:fixed;left:8px;right:8px;bottom:46px;z-index:1260;max-height:min(66vh,600px);display:none;flex-direction:column;background:#fff;color:#161616;border:2px solid #161616;border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.35);font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;overflow:hidden}
 #ask-panel.open{display:flex}
 @media(min-width:600px){#ask-panel{left:auto;right:12px;width:410px}}
-@media(min-width:1000px){#ask-panel{bottom:54px;max-height:min(62vh,560px)}}
+@media(min-width:1000px){#ask-btn{right:272px}#ask-panel{right:272px;bottom:46px;max-height:min(66vh,560px)}}
 .ask-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:10px 12px;background:#4a4a4a;color:#fff}
 .ask-head strong{font-size:15px}.ask-head span{display:block;font-size:12px;opacity:.9;font-weight:400}
 #ask-close{background:none;border:0;color:#fff;font-size:18px;line-height:1;cursor:pointer;padding:4px 6px;border-radius:6px}
@@ -856,7 +856,6 @@
       const c = e.target.closest('.ask-chip'); if (c) ask(c.dataset.q);
     });
     greet();
-    placeBtn(); window.addEventListener('resize', placeBtn); window.addEventListener('scroll', placeBtn, { passive: true }); setTimeout(placeBtn, 600); setTimeout(placeBtn, 2000);
   }
   function msg(kind, html) {
     const d = document.createElement('div'); d.className = 'ask-msg ' + kind;
@@ -877,18 +876,6 @@
     state.ctx = r.ctx || state.ctx;
     const m = msg('bot', r.html + chipRow(r.chips));
     log.scrollTop = Math.max(0, m.offsetTop - 8);
-  }
-  // Sit just above the map's Leaflet / OpenStreetMap credit line, at the map's bottom-right corner.
-  function placeBtn() {
-    try {
-      const m = document.getElementById('map'); if (!m || !btnEl) return;
-      const r = m.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
-      const right = Math.max(8, vw - Math.min(r.right, vw) + 8);
-      const bottom = Math.max(28, vh - Math.min(r.bottom, vh) + 28);
-      btnEl.style.right = right + 'px'; btnEl.style.bottom = bottom + 'px';
-      panel.style.bottom = (bottom + 48) + 'px';
-      if (vw >= 600) panel.style.right = right + 'px'; else panel.style.right = '8px';
-    } catch (e) {}
   }
   function openPanel() { if (state.open) { input.focus(); return; } state.open = true; lastFocus = document.activeElement; panel.classList.add('open'); btnEl.setAttribute('aria-expanded', 'true'); setTimeout(() => input.focus(), 0); }
   function closePanel(keepFocus) { if (!state.open) return; state.open = false; panel.classList.remove('open'); btnEl.setAttribute('aria-expanded', 'false'); if (!keepFocus) btnEl.focus(); }
