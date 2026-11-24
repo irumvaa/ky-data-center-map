@@ -297,7 +297,7 @@
   ];
 
   // --------------------------------------------------------------- UI plumbing
-  const state = { ctx: null, acts: [], open: false };
+  const state = { ctx: null, acts: [], open: false, asked: new Set() };
   function act(fn) { state.acts.push(fn); return state.acts.length - 1; }
   function btn(label, fn, cls) { return '<button type="button" class="ask-act ' + (cls || '') + '" data-act="' + act(fn) + '">' + esc(label) + '</button>'; }
   function showOnMap(items, title) {
@@ -732,6 +732,7 @@
   }
 
   function smartIntents(qn, hasNamed) {
+    if (/\b(how many|number of|count of|breakdown|break down|split)\b.*\b(each|every|by|per)\b.*\bstages?\b|\bprojects? by stage\b|\bstage breakdown\b/.test(qn)) { const sc = stageCounts(projects), fac = projects.filter(p => p._facility).length; return R(P('Projects by stage:') + UL(['**Rumored:** ' + sc.Rumored, '**Proposed:** ' + sc.Proposed, '**Operating:** ' + sc.Operating + (fac ? ' (' + fac + ' of them are commercial hosting facilities from datacentermap.com)' : '')]) + '<div class="ask-actions">' + mapBtn(projects.map((p, i) => projItem(i)), 'All projects') + '</div>', ['How is the stage decided?', 'What does a dashed pin mean?']); }
     if (/\b(learn more|read more|more (info|information|about this)|best (source|place|resource)s?|resources?|where (can|do) i (learn|read|find out)|further reading|recommend\w* (reading|sources?)|good sources?)\b/.test(qn) && !/\b(map|legend|colou?rs?)\b/.test(qn)) return answerResources();
     if (/\b(which|what|list|show|how many)\b.*\bprojects?\b.*\b(have|has|with|without|lack|lacking|missing|no|don'?t|doesn'?t)\b/.test(qn) || /\bprojects? (that |which )?(lack|lacks|without|missing|with no|have no|has no|don'?t have|doesn'?t have)\b/.test(qn) || /\b(are there|do any)\b.*\bprojects?\b.*\b(lack|without|missing|no)\b/.test(qn)) { if (!/\b(moratori\w+|ordinances?|rules?|regulat\w+)\b/.test(qn)) { const a = answerMissingField(qn); if (a) return a; } }
     if (/\b(capacity|power|megawatts?|gigawatts?|mw|gw)\b/.test(qn) && /\b(of all|all (the )?projects|everything|combined|total|overall|altogether)\b/.test(qn)) return answerTotals();
@@ -786,7 +787,7 @@
     let h = P(g.a);
     if (g.f) h += P(g.f());
     if (g.util && typeof g.util === 'string') { const n = (kb().util[g.util] || []).length; h += P('On the map, ' + plural(n, 'project') + ' mention it.'); }
-    return R(h, [g.chip, g.util === 'ekpc' ? 'Which projects use EKPC?' : null, 'How do I read the colors?']);
+    return R(h, [g.chip, g.util === 'ekpc' ? 'Which projects use EKPC?' : null]);
   }
   function faqScore(qn) {
     const qt = new Set(qTokens(qn).filter(t => !STOP.has(t)));
@@ -823,7 +824,7 @@
       return R(P('When a moratorium passes its end date, it is taken off the map automatically. It stays in the tracking sheet, so staff keep the record.') + P('The map warns you before that happens: moratoria ending within 60 days get an \u201cExpires in X days\u201d tag in their popup, and the **Expiring soon** button shows them all.') + P('If a county extends the moratorium or replaces it with a permanent rule, staff update the entry and it stays on the map or comes back. A county that lets it lapse simply shows as having no rule.') + (soon.length ? P('Ending soon right now: ' + soon.slice(0, 4).map(r => (r.city && !isCountyLevel(r) ? r.city + ', ' : '') + r.county + ' (' + r.expiration + ')').join('; ') + '.') : '') + (gone.length ? P('Already removed: ' + gone.slice(0, 4).map(r => (r.city && !isCountyLevel(r) ? r.city + ', ' : '') + r.county + ' (ended ' + r.expiration + ')').join('; ') + '. If you know one was extended, use the Report a problem form.') : '') + '<div class="ask-actions">' + (soon.length ? mapBtn(soon.map(r => regItem(regulations.indexOf(r))), 'Moratoria ending soon') : '') + '</div>', ['Which moratoria end soon?', 'How do I report a problem?']);
     }
     const gl = glossaryFor(qn);
-    if (gl && !hasNamed) { const ans = answerGloss(gl); return ans; }
+    if (gl && !hasNamed && !/\b(concerns?|risks?|problems?|issues?|impacts?)\b/.test(qn)) { const ans = answerGloss(gl); return ans; }
     if (/\bexpiring soon\b/.test(qn) && /\b(show|mean|button|filter|what|does)\b/.test(qn)) { const f0 = FAQ.find(x => x.id === 'expiring'); return R(f0.a().join(''), ['Which moratoria end soon?']); }
     const faq = faqScore(qn);
     if ((uiWords.test(qn) && !hasNamed) || (faq.s >= 2.5 && !hasNamed && !/\b(projects?|moratori\w+|ordinances?|developers?|proposed|rumou?red)\b/.test(qn)) || /\b(what can you do|who are you|what are you|what do you know|are you (an )?(ai|bot|human)|help me)\b/.test(qn)) {
@@ -977,6 +978,50 @@
     const m = msg('bot', P('Hi! I know everything on this map: the projects, the local rules, and how the map works. You can also ask me about any term used on the map, like moratorium, TSR, tariff or hyperscale. Ask me anything, or try one of these.') + chipRow(['What’s the big picture?', 'Which moratoria end soon?', 'What does TSR mean?', 'How do I read the colors?']));
     return m;
   }
+
+  // ------------------------------------------------ suggested follow-up questions
+  const TOPIC_FOLLOW = [
+    { re: /\b(expired?|expire[sd]?|expiry|expiring|extended|extension)\b/, c: ['Which moratoria end soon?', 'How does the map know when a moratorium expires?', 'How do I report a problem?'] },
+    { re: /\b(submit|submission|form|suggest|report a problem|add (a )?(project|rule|information))\b/, c: ['How does data get added to the map?', 'How is the data verified?', 'Who can edit the map?'] },
+    { re: /\b(how (does|do|is|are) .*(data|map|information)|where does the data|updated|verified|sources?)\b/, c: ['Where does the data come from?', 'How often is the map updated?', 'How solid is this data?'] },
+    { re: /\b(colou?rs?|legend|shading|stripes?|amber|gray|grey|blue|teal|red)\b/, c: ['What does a dashed pin mean?', 'What does a square mean?', 'What does Expiring soon show?'] },
+    { re: /\b(pins?|dots?|dashed|squares?|stage|rumou?red|operating)\b/, c: ['How are pins placed?', 'How is the stage decided?', 'How many projects are in each stage?'] },
+    { re: /\b(filters?|buttons?|expiring soon|layers?|zoom)\b/, c: ['How do I share this view?', 'What are transmission lines?', 'How do I zoom?'] },
+    { re: /\b(share|link|print|download)\b/, c: ['What does Expiring soon show?', 'How do I read the colors?', 'Who do I contact?'] },
+    { re: /\b(tsr|transmission service|esa|electric service)\b/, c: ['What is a tariff?', 'What is EKPC?', 'Which projects use EKPC?'] },
+    { re: /\b(tariff|ehlf|large.?load|ratepayers?|electric rates?)\b/, c: ['What is a TSR?', 'Which projects have a tariff?', 'What are the biggest concerns for ratepayers?'] },
+    { re: /\b(ekpc|lg ?e|ku|kentucky power|big rivers|utility|utilities)\b/, c: ['Which projects have a tariff?', 'What is a TSR?', 'Which projects have no utility named?'] },
+    { re: /\b(hyperscal\w*|mw|gw|megawatts?|gigawatts?|capacity|biggest|largest)\b/, c: ['Projects over 500 MW', 'What is the total capacity?', 'Which projects are the most likely to be built?'] },
+    { re: /\b(moratori\w+|ordinances?|pending|ban|pause)\b/, c: ['What is the difference between a moratorium and an ordinance?', 'What happens to an expired moratorium?', 'Which counties have no regulation but a proposed project?'] },
+    { re: /\b(developers?|terawulf|poe|powerhouse|riot|bluegrassnet|lumen)\b/, c: ['Who is the biggest developer?', 'What patterns do you see?', 'Which projects have no developer?'] },
+    { re: /\b(tenants?|anthropic|meta|amazon|google|microsoft)\b/, c: ['Which projects have no tenant?', 'Who is the biggest developer?', 'What patterns do you see?'] },
+    { re: /\b(region|eastern|western|central|northern|southern|east|west|north|south)\b/, c: ['Which regions are most active?', 'Which county is the most restrictive?', 'What is the big picture?'] },
+    { re: /\b(risks?|concerns?|restrictive|gaps?|conflicts?|watch)\b/, c: ['Which proposed projects are in counties with a moratorium?', 'Which counties have no regulation but a proposed project?', 'Which moratoria end soon?'] }
+  ];
+  const BASE_FOLLOW = ['What’s the big picture?', 'Which moratoria end soon?', 'How do I read the colors?', 'How does data get added to the map?'];
+  function followUps(q, r) {
+    const qn = norm(q), out = [];
+    const add = c => { if (c && !state.asked.has(norm(c)) && norm(c) !== qn && !out.includes(c)) out.push(c); };
+    (r.chips || []).forEach(add);
+    const c = r.ctx;
+    if (c) {
+      if (c.type === 'project' && projects[c.i]) {
+        const p = projects[c.i];
+        add('Who is the tenant of ' + p.name + '?'); add('What other projects are near ' + p.name + '?'); add('Is there a moratorium in ' + p.county + ' County?');
+        if (p._k && p._k.devs[0]) add('What else does ' + kb().devLabel[p._k.devs[0]] + ' have?');
+      } else if (c.type === 'county') {
+        add('Which moratoria end soon?'); add('Compare ' + c.county + ' and ' + (c.county === 'Fayette' ? 'Jefferson' : 'Fayette')); add('Which counties have no regulation but a proposed project?');
+      } else if (c.type === 'dev') {
+        add('Which proposed projects are in counties with a moratorium?'); add('Who is the biggest developer?');
+      } else if (c.type === 'util') {
+        add('What is a tariff?'); add('Which projects have a tariff?');
+      }
+    }
+    for (const t of TOPIC_FOLLOW) { if (t.re.test(qn)) t.c.forEach(add); if (out.length >= 5) break; }
+    BASE_FOLLOW.forEach(add);
+    return out.slice(0, 3);
+  }
+
   function ask(q) {
     openPanel();
     msg('user', esc(q));
@@ -984,7 +1029,9 @@
     try { r = route(q); } catch (e) { console.warn('Ask the map error', e); r = R(P('Sorry, something went wrong with that question. Try rephrasing it, or search the map directly.'), ['What’s the big picture?']); }
     if (!r) return;
     state.ctx = r.ctx || state.ctx;
-    const m = msg('bot', r.html + chipRow(r.chips));
+    state.asked.add(norm(q));
+    let fu = []; try { fu = followUps(q, r); } catch (e) { fu = r.chips || []; }
+    const m = msg('bot', r.html + chipRow(fu));
     log.scrollTop = Math.max(0, m.offsetTop - 8);
   }
   function openPanel() { if (state.open) { input.focus(); return; } state.open = true; lastFocus = document.activeElement; panel.classList.add('open'); btnEl.setAttribute('aria-expanded', 'true'); setTimeout(() => input.focus(), 0); }
