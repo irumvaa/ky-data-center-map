@@ -97,7 +97,13 @@
   ];
   const UTIL_ALIASES = { ekpc: ['ekpc', 'east kentucky power'], lgeku: ['lg e', 'lge', 'ku', 'lg and e', 'lg e ku', 'kentucky utilities', 'lg e and ku'], kypower: ['kentucky power', 'aep'], bigrivers: ['big rivers'], owen: ['owen electric'], farmers: ['farmers recc'], jpec: ['jackson purchase'], paducahpower: ['paducah power'] };
   let KB = null, KBSIG = '';
-  function sig() { return projects.length + '|' + regulations.length + '|' + ((document.getElementById('data-status') || {}).textContent || ''); }
+  // Content hash, so any edit in the Sheet (not just added or removed rows) rebuilds the chat's knowledge.
+  function sig() {
+    let h = 5381;
+    const feed = x => { for (let i = 0; i < x.length; i++) h = ((h << 5) + h + x.charCodeAt(i)) | 0; };
+    try { feed(JSON.stringify(projects, (k, v) => k === '_blob' ? undefined : v)); feed(JSON.stringify(regulations, (k, v) => k === '_blob' ? undefined : v)); } catch (e) {}
+    return projects.length + '|' + regulations.length + '|' + h;
+  }
   function devKeys(s) {
     return String(s || '').replace(/\([^)]*\)/g, ' ').split(/\s*(?:\/|;|,|\band\b|\bvia\b|\bwith\b|\bbacked by\b|\bpower supplied by\b)\s*/i)
       .map(x => norm(x).replace(/\b(llc|inc|co|corp|corporation|companies|company|data centers?|holdings|group|properties|partners)\b/g, ' ').replace(/\s+/g, ' ').trim())
