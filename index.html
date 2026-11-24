@@ -1314,7 +1314,7 @@ const REGION_TESTS = {
   central:{label:'central Kentucky', f:o=>o.lng>-86.2&&o.lng<=-84.3&&o.lat>37.2&&o.lat<38.6}
 };
 
-function parseQuestion(q){
+function parseQuestion(q,relaxed){
   const flat=q.replace(/[?!.]+$/,'').replace(/[,;]/g,' ').replace(/\s+/g,' ').trim();
   const qWord=/^(how many|which|what|where|show|list|find|any|are there|is there|give me)\b/.test(flat);
   const hasRegWord=/\b(moratori\w+|ordinances?|regulations?|bans?|banned|pauses?|paused|halts?|freezes?)\b/.test(flat);
@@ -1358,14 +1358,14 @@ function parseQuestion(q){
     }
   }
   const explicitNoun=/\b(projects?|moratori(a|ums?)|ordinances?|data cent\w+)\b/.test(flat);
-  if(count<2 && !(count>=1 && (qWord || (explicitNoun && flat.split(' ').length>=2)))) return null;
+  if(count<2 && !(count>=1 && (relaxed || qWord || (explicitNoun && flat.split(' ').length>=2)))) return null;
   f.countOnly=/^how many\b/.test(flat);
   return {entity, f, count};
 }
 
-function answerQuestion(q){
+function answerQuestion(q,relaxed){
   let plan;
-  try{ plan=parseQuestion(q); }catch(e){ return null; }
+  try{ plan=parseQuestion(q,relaxed); }catch(e){ return null; }
   if(!plan) return null;
   const {entity,f}=plan;
   const inRegion=o=>(!f.region||f.region.f(o));
@@ -1915,5 +1915,6 @@ if(/[?&]check=1\b/.test(location.search)) showDataChecks();
   const b=document.getElementById(id); if(b) b.addEventListener('click',()=>setTimeout(fitToFilters,0));
 });
 </script>
+<script src="assistant.js"></script>
 </body>
 </html>
