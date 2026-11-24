@@ -681,7 +681,34 @@
     const lines = regs.map(r => { const d = daysUntilExpiry(r); return '**' + describeReg(r).split(',')[0] + ':** ' + (r.expiration ? 'ends ' + r.expiration + (d != null && d >= 0 ? ' (' + plural(d, 'day') + ' left)' : '') : 'no end date on file, it runs until the local government acts') + (r.period ? '. Length on file: ' + r.period : ''); });
     return R(UL(lines) + P('Moratoria are sometimes extended or replaced by permanent rules. The map updates when staff learn of a change, and expired ones are removed.') + '<div class="ask-actions">' + countyBtn(place.county) + '</div>', ['What happens when a moratorium expires?', 'Which moratoria end soon?']);
   }
+  function answerResources() {
+    return R(P('The map is a starting point. These are the best places to go deeper:') + linkBlock([resById('mta'), resById('epic'), resById('tracker'), resById('pause'), resById('klc'), resById('psc'), resById('contact')], 'Recommended reading and sources'), ['What\u2019s the big picture?', 'What is a moratorium?']);
+  }
+  const FIELDS = [
+    { re: /\b(developers?|builders?)\b/, label: 'a named developer', has: p => !unknownVal(p.developer) },
+    { re: /\b(tenants?|customers?|end users?)\b/, label: 'a named tenant', has: p => !unknownVal(p.tenant) && !/confidential|undisclosed|not (named|disclosed)/i.test(p.tenant) },
+    { re: /\b(size|capacity|mw|megawatts?|gw|gigawatts?)\b/, label: 'a stated size in MW or GW', has: p => mw(p) != null },
+    { re: /\b(tariffs?|rate schedules?)\b/, label: 'a tariff', has: p => !unknownVal(p.tariff) },
+    { re: /\b(utilit(y|ies)|power suppl\w+|electric (provider|supplier|company))\b/, label: 'a named utility', has: p => !unknownVal(p.utility) },
+    { re: /\b(completion|opening|online|timeline|dates?)\b/, label: 'a completion date', has: p => !unknownVal(p.completionDate) },
+    { re: /\b(sources?|links?|citations?)\b/, label: 'a source link', has: p => (p.links || []).filter(safeUrl).length > 0 },
+    { re: /\b(zoning|planning|pz)\b/, label: 'a planning and zoning note', has: p => !unknownVal(p.pz) }
+  ];
+  function answerMissingField(qn) {
+    const f = FIELDS.find(x => x.re.test(qn)); if (!f) return null;
+    const neg = /\b(no|without|lack|lacks|lacking|missing|don'?t have|doesn'?t have|not (named|listed|given|stated)|undisclosed|unknown)\b/.test(qn);
+    const base = projects.map((p, i) => ({ p, i })).filter(o => !o.p._facility);
+    const sel = base.filter(o => neg ? !f.has(o.p) : f.has(o.p));
+    return R(P(plural(sel.length, 'project') + (neg ? ' have no ' + f.label.replace(/^an? /, '') : ' have ' + f.label) + ' on the map (commercial facilities left out):') + UL(sel.slice(0, 10).map(o => '**' + o.p.name + '** (' + o.p.county + ' Co., ' + o.p.stage + ')')) + (sel.length > 10 ? P('And ' + (sel.length - 10) + ' more.') : '') + '<div class="ask-actions">' + (sel.length ? mapBtn(sel.map(o => projItem(o.i)), 'Projects ' + (neg ? 'missing ' : 'with ') + f.label) : '') + '</div>', ['How solid is this data?']);
+  }
   function smartIntents(qn, hasNamed) {
+    if (/\b(learn more|read more|more (info|information|about this)|best (source|place|resource)s?|resources?|where (can|do) i (learn|read|find out)|further reading|recommend\w* (reading|sources?)|good sources?)\b/.test(qn) && !/\b(map|legend|colou?rs?)\b/.test(qn)) return answerResources();
+    if (/\b(which|what|list|show|how many)\b.*\bprojects?\b.*\b(have|has|with|without|lack|lacking|missing|no|don'?t|doesn'?t)\b/.test(qn) || /\bprojects? (that |which )?(lack|lacks|without|missing|with no|have no|has no|don'?t have|doesn'?t have)\b/.test(qn) || /\b(are there|do any)\b.*\bprojects?\b.*\b(lack|without|missing|no)\b/.test(qn)) { if (!/\b(moratori\w+|ordinances?|rules?|regulat\w+)\b/.test(qn)) { const a = answerMissingField(qn); if (a) return a; } }
+    if (/\b(capacity|power|megawatts?|gigawatts?|mw|gw)\b/.test(qn) && /\b(of all|all (the )?projects|everything|combined|total|overall|altogether)\b/.test(qn)) return answerTotals();
+    {
+      const e2 = findEntities(qn);
+      if (e2.counties.length >= 2 && /\b(more|most|bigger|larger|fewer|less|than|or|versus|vs|compare)\b/.test(qn) && !/\bmoratori\w+ in\b/.test(qn)) return compareEntities({ type: 'county', name: e2.counties[0] }, { type: 'county', name: e2.counties[1] });
+    }
     {
       const ee = findEntities(qn);
       const pl = ee.cities[0] || (ee.counties[0] ? { key: ee.counties[0], county: ee.counties[0], isCounty: true } : null);
@@ -705,14 +732,14 @@
       const rg = qn.match(/\b(eastern|east|central|western|west)\b(?: kentucky| ky)?\b/); if (rg && /\b(kentucky|ky|region|part|happening|going on|activity)\b/.test(qn) && !/\b(proposed|operating|rumou?red|moratori\w+|ordinances?)\b/.test(qn)) return answerRegions(/^east/.test(rg[1]) ? 'eastern' : /^west/.test(rg[1]) ? 'western' : 'central');
       if (/\b(good|bad|friendly|welcoming|trend|direction|momentum|going well|doing|healthy|growing|slowing|heating up|picture)\b/.test(qn) && /\b(kentucky|ky|state|data cent\w+|moratori\w+|statewide)\b/.test(qn)) return answerLandscape(qn);
       if (/\b(banning|banned|pushback|opposition|resistance|backlash|fighting|against|restrict\w*|cracking down)\b/.test(qn) && /\b(counties|county|cities|local|places|kentucky|data cent\w+)\b/.test(qn)) return answerCountsAbout(qn);
-      if (/\b(risks?|concerns?|problems?|watch (out|for)|red flags?|worry|worries|issues?)\b/.test(qn) && /\b(biggest|main|top|key|most|any|kentucky|data cent\w+|the map)\b/.test(qn)) return answerRisks();
-      if (/\b(should (a |my |the |our )?(county|city|town|community|government|fiscal court|council)|how (do|can) (i|we|a county|a city|my county|my community) (protect|prepare|respond|handle|stop|regulate|get ready)|what (can|should) (a |my |our )?(county|city|community)|protect my (county|town|community|city))\b/.test(qn)) return answerAdvice();
+      if (!linksFor(qn, 1).length && /\b(risks?|concerns?|problems?|watch (out|for)|red flags?|worry|worries|issues?)\b/.test(qn) && /\b(biggest|main|top|key|most|any|kentucky|data cent\w+|the map)\b/.test(qn)) return answerRisks();
+      if (/\b(should (a |my |the |our )?(county|city|town|community|government|fiscal court|council)|how (do|can) (i|we|a county|a city|my county|my community) (protect|prepare|respond|handle|stop|regulate|get ready)|what (can|should|do) (a |my |our |the )?(county|city|community|local government|local governments|counties|cities)( do)?|what do local governments do|protect my (county|town|community|city))\b/.test(qn)) return answerAdvice();
       if (/\b(newest|latest|recent(ly)?|just (added|passed)|new (moratori\w+|rules?|ordinances?)|this (week|month)|happened lately|what('?s| is) new)\b/.test(qn)) { const a = answerRecent(); if (a) return a; }
       if (/\b(confirmed|sourced|unsourced|no source|without (a )?source|reliable|trust|how (accurate|solid|reliable|complete)|data quality|complete)\b/.test(qn)) return answerConfidence(qn);
       if (/\b(approved|rejected|denied|withdrawn|voted down|tabled|turned down|approval)\b/.test(qn) && /\b(projects?|rezoning|zoning|data cent\w+|any)\b/.test(qn)) return answerStatusWords(qn);
       if (/\b(how many|what percent\w*|what share|number of)\b/.test(qn) && /\b(counties|cities)\b/.test(qn) && /\b(moratori\w+|rules?|regulat\w+|ban\w*|protect\w*|restrict\w*|ordinances?)\b/.test(qn)) return answerCountsAbout(qn);
       if (/\b(which|what|list|show)\b.*\bcit(y|ies)\b.*\b(moratori\w+|rules?|ban|regulat\w+)\b/.test(qn)) return answerCountsAbout('cities');
-      if (/\b(which|what|list|show)\b.*\bcount(y|ies)\b.*\b(have|has|with)\b.*\b(moratori\w+)\b/.test(qn)) return answerCountsAbout('counties');
+      if (/\b(which|what|list|show)\b.*\bcount(y|ies)\b.*\b(have|has|with)\b.*\b(moratori\w+)\b/.test(qn) && !/\b(proposed|rumou?red|projects?|developers?)\b/.test(qn)) return answerCountsAbout('counties');
     }
     return null;
   }
@@ -781,7 +808,7 @@
       const two = a.filter(x => x.type === 'proj').length >= 2 ? a.filter(x => x.type === 'proj').slice(0, 2) : a.filter(x => x.type === 'county').length >= 2 ? a.filter(x => x.type === 'county').slice(0, 2) : null;
       if (two) return compareEntities(two[0].type === 'proj' ? { type: 'proj', i: two[0].i } : { type: 'county', name: two[0].name }, two[1].type === 'proj' ? { type: 'proj', i: two[1].i } : { type: 'county', name: two[1].name });
     }
-    if (/\b(most|top|biggest|largest|leading|ranking|rank|longest)\b/.test(qn)) {
+    if (/\b(most|top|biggest|largest|leading|ranking|rank|longest)\b/.test(qn) && !/\b(concerns?|risks?|problems?|issues?|worries)\b/.test(qn)) {
       if (/\bdevelopers?\b|\bcompan(y|ies)\b|\bwho (is|are|has|have)\b/.test(qn)) return answerRanking('dev', qn);
       if (/\bcount(y|ies)\b/.test(qn) && !hasNamed) return answerRanking('county', qn);
       if (/\b(moratori\w+)\b/.test(qn) && /\blongest|most\b/.test(qn)) return answerRanking('moratorium', qn);
