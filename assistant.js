@@ -1315,6 +1315,7 @@
     let fixed = null;
     try { fixed = correctTypos(qRaw); } catch (e) { fixed = null; }
     if (fixed && norm(fixed) !== norm(qRaw)) {
+      if (/^(in )?(kentucky|ky)\s*(data cent\w+|projects?|moratori\w+|rules?)?$/.test(fixed)) { const r0 = routeCore('what is the big picture'); r0.html = '<p class="ask-note"><em>Showing results for \u201c' + esc(fixed) + '\u201d.</em></p>' + r0.html; return r0; }
       const r = routeCore(fixed);
       if (r && !NOT_FOUND.test(r.html)) { r.html = '<p class="ask-note"><em>Showing results for “' + esc(fixed) + '”.</em></p>' + r.html; return r; }
     }
