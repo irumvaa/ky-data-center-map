@@ -194,6 +194,8 @@ Also handles:
 
 **Typos.** Before answering, the chat checks each word against the words on the map (project, county and city names, notes, glossary terms) plus common question words. A word it does not know is swapped for the closest match (one or two letters off, or swapped neighbours), and the answer starts with "Showing results for ...". If the corrected question finds nothing, it answers the question as typed. See `correctTypos` in `assistant.js`.
 
+**Saved snapshot.** `index.html` carries a copy of the Sheet data (the `regulations` and `projects` arrays) that shows only if the live Sheet cannot be reached. It was last refreshed from the live feed on Nov 25, 2026. When the data changes a lot, refresh it from the feed so the fallback does not go stale.
+
 **Stays current.** The chat reads the same live data as the map. It rebuilds its knowledge whenever any field changes (it checks a content hash, not just the row count), so Sheet edits show up in the chat as soon as the map loads them. A tab left open for days will not refresh until it is reloaded.
 
 **Search anything.** The chat keeps a full-text index of every field of every project and rule (name, address, size, developer, tenant, utility, tariff, notes, stage, source links), plus the text of `help.html` and the page. A distinctive word like "holloway" or "submer" shows which records mention it, with a short snippet and a Show on map button. See `ftSearch` and `ftAnswer` in `assistant.js`.
