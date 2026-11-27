@@ -252,7 +252,7 @@ facilities for the popup wording. The old `otherDataCenters` array and
 has not been migrated, and a facility already in Projects (same name) is never added twice. `facilityStage()` maps the free-text Status: anything containing
 "proposed" or "construction" becomes Proposed, everything else (including "inferred" and "not
 confirmed") becomes Operating, with the original status text kept in the popup notes.
-Each facility has an optional `verification` value (`confirmed`, `likely`, or `unverified`) set after an independent check in October 2026. Popups say whether independent sources (operator sites, PeeringDB, news) confirmed it, partly confirmed it, or could not verify it. Without the field, a popup says "not independently verified".
+Each facility has an optional `verification` value (`confirmed`, `likely`, or `unverified`) set after an independent check in October 2026. Popups say whether independent sources (operator sites, PeeringDB, news) confirmed it or partly confirmed it. For `unverified` facilities, or when the field is empty, the popup only says the facility is listed on datacentermap.com.
 Coordinates are approximate for facilities without a street address (city-level with manual
 jitter). Listings that duplicate already-tracked projects (TeraWulf/Hawesville,
 Carrollton/PowerHouse, Camp Ground Road, Project Lincoln, both Calvert City facilities, Riot

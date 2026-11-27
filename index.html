@@ -361,7 +361,7 @@ function facilityStage(status){
 function commercialNote(v, status){
   const how = v==='confirmed' ? 'first listed on datacentermap.com and confirmed by independent sources (operator website, PeeringDB or news).'
     : v==='likely' ? 'first listed on datacentermap.com. Independent sources point to it, but the details are only partly confirmed.'
-    : 'listed on datacentermap.com and not independently verified.';
+    : 'listed on datacentermap.com.';
   return 'Commercial hosting or colocation facility, ' + how + (status ? ' Status listed: ' + status + '.' : '');
 }
 // Facilities now live in the main Projects tab (Category = "Commercial facility",
@@ -392,6 +392,9 @@ function foldFacilitiesIntoProjects(){
   projects = projects.filter(p=>!p._fromDC)
     .concat(otherDataCenters.filter(d=>!have.has(normKey(d.name))).map(facilityToProject));
 }
+// The saved copy of the data carries the commercial facilities as ordinary Projects rows,
+// so tag them the same way the live feed does before folding.
+projects = projects.map(normalizeProject);
 foldFacilitiesIntoProjects();
 let regCountiesSet=new Set();
 let regByCounty={};
@@ -1915,6 +1918,6 @@ if(/[?&]check=1\b/.test(location.search)) showDataChecks();
   const b=document.getElementById(id); if(b) b.addEventListener('click',()=>setTimeout(fitToFilters,0));
 });
 </script>
-<script src="assistant.js?v=20261125o"></script>
+<script src="assistant.js?v=20261126b"></script>
 </body>
 </html>
